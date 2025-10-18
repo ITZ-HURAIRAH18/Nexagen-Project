@@ -1,15 +1,27 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 
+// 🌍 Public pages
 import Landing from "./pages/Landing";
 import LoginRole from "./pages/LoginRole";
 import SignupRole from "./pages/SignupRole";
+
+// 🛠️ Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminStats from "./pages/admin/AdminStats";
 
+// 👨‍💼 Host pages
 import HostDashboard from "./pages/host/HostDashboard";
+import HostBookings from "./pages/host/HostBookings";
+import HostAddAvailability from "./pages/host/AddAvailability";
+import HostManageAvailability from "./pages/host/ManageAvailability";
+import HostSettings from "./pages/host/HostSettings";
+
+// 👤 User pages
 import UserDashboard from "./pages/user/UserDashboard";
+
+// 🔒 Protected route wrapper
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 const App = () => {
@@ -17,12 +29,12 @@ const App = () => {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
+          {/* ---------- 🌍 PUBLIC ROUTES ---------- */}
           <Route path="/" element={<Landing />} />
           <Route path="/signup/:roleParam" element={<SignupRole />} />
           <Route path="/login/:roleParam" element={<LoginRole />} />
 
-          {/* Protected Admin Routes */}
+          {/* ---------- 🛠️ ADMIN ROUTES ---------- */}
           <Route
             path="/admin/dashboard"
             element={
@@ -48,6 +60,7 @@ const App = () => {
             }
           />
 
+          {/* ---------- 👨‍💼 HOST ROUTES ---------- */}
           <Route
             path="/host/dashboard"
             element={
@@ -56,6 +69,40 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/host/bookings"
+            element={
+              <ProtectedRoute allowedRoles={["host"]}>
+                <HostBookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/host/add-availability"
+            element={
+              <ProtectedRoute allowedRoles={["host"]}>
+                <HostAddAvailability />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/host/manage-availability"
+            element={
+              <ProtectedRoute allowedRoles={["host"]}>
+                <HostManageAvailability />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/host/settings"
+            element={
+              <ProtectedRoute allowedRoles={["host"]}>
+                <HostSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ---------- 👤 USER ROUTES ---------- */}
           <Route
             path="/user/dashboard"
             element={

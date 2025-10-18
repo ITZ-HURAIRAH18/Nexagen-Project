@@ -25,5 +25,20 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+// import mongoose from "mongoose";
+
+// const userSchema = new mongoose.Schema(
+//   {
+//     name: String,
+//     email: { type: String, unique: true, index: true },
+//     passwordHash: String,
+//     role: { type: String, enum: ["guest", "host", "admin"], default: "guest" },
+//     username: { type: String, unique: true },
+//     isSuspended: { type: Boolean, default: false },
+//   },
+//   { timestamps: true }
+// );
+
+// export default mongoose.model("User", userSchema);
 
 export default mongoose.model("User", userSchema);
