@@ -1,10 +1,9 @@
 import express from "express";
 import { verifyToken, isHost } from "../middleware/authMiddleware.js";
+import { getHostDashboard } from "../controllers/hostController.js";
 
 const router = express.Router();
 
-router.get("/dashboard", verifyToken, isHost, (req, res) => {
-  res.json({ message: "Welcome Host! You can manage your meetings." });
-});
+router.get("/dashboard", verifyToken, isHost, getHostDashboard);
 
 export default router;
