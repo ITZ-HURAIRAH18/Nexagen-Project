@@ -25,9 +25,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // clear local storage and state; return a resolved promise so callers can await
     localStorage.removeItem("token");
     setUser(null);
     setToken(null);
+    return Promise.resolve();
   };
 
   return (

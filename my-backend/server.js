@@ -8,9 +8,9 @@ import userRoutes from "./routes/userRoutes.js";
 import hostRoutes from "./routes/hostRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 
-dotenv.config();
-const app = express();
 
+const app = express();
+dotenv.config();
 app.use(cors());
 app.use(express.json());
 
