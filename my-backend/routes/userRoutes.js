@@ -1,11 +1,10 @@
 import express from "express";
-import { createUser, getUsers, updateUser, deleteUser } from "../controllers/userController.js";
+import { verifyToken, isUser } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", getUsers);
-router.post("/", createUser);
-router.put("/:id", updateUser);
-router.delete("/:id", deleteUser);
+router.get("/bookings", verifyToken, isUser, (req, res) => {
+  res.json({ message: "Welcome User! You can view your bookings." });
+});
 
 export default router;
