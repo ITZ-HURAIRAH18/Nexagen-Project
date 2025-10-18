@@ -1,11 +1,10 @@
-// backend/models/User.js
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String },
+    password: { type: String }, // hashed with bcrypt if not Google account
     role: {
       type: String,
       enum: ["user", "host", "admin"],
@@ -13,10 +12,16 @@ const userSchema = new mongoose.Schema(
     },
     profilePicture: { type: String },
     isGoogleAccount: { type: Boolean, default: false },
-    availability: { type: Object, default: {} },
-    bufferTime: { type: Number, default: 0 },
-    dailyLimit: { type: Number, default: 0 },
-    bookingLink: { type: String, default: "" },
+
+    // Scheduling / availability
+    availability: {
+      type: Object, // e.g., { mon: ["09:00-12:00", "13:00-17:00"], ... }
+      default: {},
+    },
+    bufferTime: { type: Number, default: 0 }, // minutes before/after meetings
+    dailyLimit: { type: Number, default: 0 }, // max bookings per day
+    bookingLink: { type: String, default: "" }, // unique public booking URL
+    suspended: { type: Boolean, default: false }, // for admin suspension
   },
   { timestamps: true }
 );

@@ -1,3 +1,73 @@
-export const getAdminDashboard = (req, res) => {
-  res.json({ message: `Welcome ${req.user.fullName}! You can view all platform stats.` });
+// controllers/adminController.js
+import User from "../models/User.js";       // Your User model
+import Booking from "../models/Booking.js"; // Your Booking model
+
+// Get all users
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Suspend a user
+export const suspendUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.suspended = true; // example field
+    await user.save();
+
+    res.json({ message: "User suspended successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Delete a user
+export const deleteUser = async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Admin stats
+export const getStats = async (req, res) => {
+  try {
+    const totalBookings = await Booking.countDocuments();
+    const activeHosts = await User.countDocuments({ role: "host", active: true });
+
+    const topHosts = await Booking.aggregate([
+      { $group: { _id: "$hostId", totalBookings: { $sum: 1 } } },
+      { $sort: { totalBookings: -1 } },
+      { $limit: 5 }
+    ]);
+
+    res.json({ totalBookings, activeHosts, topHosts });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const getDashboard = async (req, res) => {
+  try {
+    // Example dashboard data
+    const totalUsers = await User.countDocuments();
+    const totalBookings = await Booking.countDocuments();
+    const recentUsers = await User.find().sort({ createdAt: -1 }).limit(5).select("fullName email role");
+
+    res.json({
+      totalUsers,
+      totalBookings,
+      recentUsers
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
