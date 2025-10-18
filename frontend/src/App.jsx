@@ -5,6 +5,9 @@ import Landing from "./pages/Landing";
 import LoginRole from "./pages/LoginRole";
 import SignupRole from "./pages/SignupRole";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminStats from "./pages/admin/AdminStats";
+
 import HostDashboard from "./pages/host/HostDashboard";
 import UserDashboard from "./pages/user/UserDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -19,7 +22,7 @@ const App = () => {
           <Route path="/signup/:roleParam" element={<SignupRole />} />
           <Route path="/login/:roleParam" element={<LoginRole />} />
 
-          {/* Protected Dashboards */}
+          {/* Protected Admin Routes */}
           <Route
             path="/admin/dashboard"
             element={
@@ -28,6 +31,23 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/stats"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminStats />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/host/dashboard"
             element={

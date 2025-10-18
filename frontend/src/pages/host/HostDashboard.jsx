@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axiosInstance";
 
-import Header from "../../components/Header";
+import Header from "../../components/hostHeader";
 
 const HostDashboard = () => {
   const [data, setData] = useState(null);

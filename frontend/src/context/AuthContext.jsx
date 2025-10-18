@@ -1,21 +1,43 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { jwtDecode } from "jwt-decode";
+
+// small helper to decode a JWT without external dependency
+const decodeJwt = (token) => {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1];
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decodeURIComponent(escape(decoded)));
+  } catch (e) {
+    return null;
+  }
+};
 
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("token"));
+  const [user, setUser] = useState(() => {
+    const t = localStorage.getItem("token");
+    if (!t) return null;
+    try {
+      return decodeJwt(t);
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     if (token) {
       try {
-        const decoded = jwtDecode(token);
+        const decoded = decodeJwt(token);
         setUser(decoded);
       } catch {
         setUser(null);
       }
+    } else {
+      setUser(null);
     }
   }, [token]);
 
