@@ -1,6 +1,8 @@
+import mongoose from "mongoose"; // ✅ add this line
 import Availability from "../models/Availability.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
+
 
 // 📊 Dashboard Overview
 export const getHostDashboard = async (req, res) => {
@@ -211,6 +213,42 @@ export const getAvailabilityById = async (req, res) => {
     res.json(availability);
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+// Update Booking Status
+
+export const updateBookingStatus = async (req, res) => {
+  const bookingId = req.params.id;
+  const { status } = req.body;
+
+  const allowedStatuses = ["confirmed", "cancelled", "rescheduled", "pending"];
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ message: "Invalid status value" });
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+    return res.status(400).json({ message: "Invalid booking ID" });
+  }
+
+  try {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    // Ensure host owns this booking
+    if (!req.user || booking.hostId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    booking.status = status;
+    await booking.save();
+
+    res.json({ message: "Booking status updated successfully", booking });
+  } catch (err) {
+    console.error("Error updating booking status:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

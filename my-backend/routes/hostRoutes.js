@@ -8,7 +8,8 @@ import {
   updateAvailabilityById,
   deleteAvailabilityById,
   updateHostSettings,
-   getAvailabilityById
+   getAvailabilityById,
+   updateBookingStatus
 } from "../controllers/hostController.js";
 
 const router = express.Router();
@@ -36,5 +37,9 @@ router.put("/settings", verifyToken, isHost, updateHostSettings);
 
 
 router.get("/availability/:id", verifyToken, isHost, getAvailabilityById);
+
+
+// 📝 Update Booking Status
+router.put("/bookings/update-status/:id", verifyToken, isHost, updateBookingStatus);
 
 export default router;

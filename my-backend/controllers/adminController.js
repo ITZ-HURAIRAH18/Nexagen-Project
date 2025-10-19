@@ -46,7 +46,26 @@ export const getStats = async (req, res) => {
     const topHosts = await Booking.aggregate([
       { $group: { _id: "$hostId", totalBookings: { $sum: 1 } } },
       { $sort: { totalBookings: -1 } },
-      { $limit: 5 }
+      { $limit: 5 },
+      // Join with User collection to get host details
+      {
+        $lookup: {
+          from: "users",          // collection name in MongoDB
+          localField: "_id",      // hostId from Booking
+          foreignField: "_id",    // _id in User collection
+          as: "hostInfo"
+        }
+      },
+      // Unwind the joined array
+      { $unwind: "$hostInfo" },
+      // Project only necessary fields
+      {
+        $project: {
+          _id: 1,
+          totalBookings: 1,
+          fullName: "$hostInfo.fullName"
+        }
+      }
     ]);
 
     res.json({ totalBookings, activeHosts, topHosts });
@@ -54,6 +73,7 @@ export const getStats = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 export const getDashboard = async (req, res) => {
   try {
