@@ -29,7 +29,7 @@ const AddAvailability = () => {
         maxPerDay: Number(maxPerDay),
         timezone,
       };
-      const res = await axiosInstance.post("/availability/add", payload);
+      const res = await axiosInstance.post("/host/availability/add", payload);
       alert("✅ Availability added successfully!");
       console.log(res.data);
     } catch (error) {

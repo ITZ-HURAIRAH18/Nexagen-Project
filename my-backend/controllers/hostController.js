@@ -69,6 +69,8 @@ export const getMyAvailability = async (req, res) => {
   try {
     const hostId = req.user._id;
     const availability = await Availability.findOne({ hostId });
+    console.log("Fetched availability:", availability);
+    return
     res.json({ success: true, availability });
   } catch (error) {
     console.error("Error fetching availability:", error);
@@ -78,6 +80,7 @@ export const getMyAvailability = async (req, res) => {
 
 // ➕ Add New Availability
 export const addAvailability = async (req, res) => {
+
   try {
     const hostId = req.user._id;
     const {
@@ -140,6 +143,24 @@ export const updateAvailability = async (req, res) => {
   } catch (error) {
     console.error("Error updating availability:", error);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ❌ Delete Host Availability
+export const deleteAvailability = async (req, res) => {
+  try {
+    const hostId = req.user._id;
+
+    const deleted = await Availability.findOneAndDelete({ hostId });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "No availability found to delete." });
+    }
+
+    res.json({ success: true, message: "Availability deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting availability:", error);
+    res.status(500).json({ success: false, message: "Server error while deleting availability." });
   }
 };
 
