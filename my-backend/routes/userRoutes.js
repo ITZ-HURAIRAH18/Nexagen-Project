@@ -4,8 +4,8 @@ import {
   getUserBookings,
   getAllHostsAvailability,
   createBooking,
-  updateBooking,
-  cancelBooking,
+ 
+ 
 } from "../controllers/userController.js";
 
 const router = express.Router();
@@ -19,10 +19,8 @@ router.get("/hosts/availability", verifyToken, isUser, getAllHostsAvailability);
 // Create new booking
 router.post("/bookings", verifyToken, isUser, createBooking);
 
-// Update/reschedule booking
-router.put("/bookings/:id", verifyToken, isUser, updateBooking);
 
-// Cancel booking
-router.delete("/bookings/:id", verifyToken, isUser, cancelBooking);
+
+
 
 export default router;
