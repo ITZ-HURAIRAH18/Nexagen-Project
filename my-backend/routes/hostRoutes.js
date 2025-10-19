@@ -5,8 +5,8 @@ import {
   getHostBookings,
   getMyAvailability,
   addAvailability,
-  updateAvailability,
-  deleteAvailability,
+  updateAvailabilityById,
+  deleteAvailabilityById,
   updateHostSettings,
 } from "../controllers/hostController.js";
 
@@ -24,11 +24,11 @@ router.post("/availability/add", verifyToken, isHost, addAvailability);
 // 🕓 Get Host Availability
 router.get("/availability/me", verifyToken, isHost, getMyAvailability);
 
-// ✏️ Update Host Availability
-router.put("/availability/update", verifyToken, isHost, updateAvailability);
+// ✏️ Update Availability by ID
+router.put("/availability/update/:id", verifyToken, isHost, updateAvailabilityById);
 
-// ❌ Delete Host Availability
-router.delete("/availability/delete", verifyToken, isHost, deleteAvailability);
+// ❌ Delete Availability by ID
+router.delete("/availability/delete/:id", verifyToken, isHost, deleteAvailabilityById);
 
 // ⚙️ Update Host Settings
 router.put("/settings", verifyToken, isHost, updateHostSettings);

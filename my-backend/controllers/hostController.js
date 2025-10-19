@@ -5,7 +5,7 @@ import User from "../models/User.js";
 // 📊 Dashboard Overview
 export const getHostDashboard = async (req, res) => {
   try {
-    const hostId = req.user._id;
+     const hostId = req.user._id || req.user.id;
 
     const totalBookings = await Booking.countDocuments({ hostId });
     const upcomingBookings = await Booking.countDocuments({
@@ -50,7 +50,7 @@ export const getHostDashboard = async (req, res) => {
 // 📅 All Bookings for this Host
 export const getHostBookings = async (req, res) => {
   try {
-    const hostId = req.user._id;
+    const hostId = req.user._id || req.user.id;
 
     const bookings = await Booking.find({ hostId })
       .populate("guest", "name email")
@@ -67,10 +67,23 @@ export const getHostBookings = async (req, res) => {
 // 🕓 Get Host Availability
 export const getMyAvailability = async (req, res) => {
   try {
-    const hostId = req.user._id;
-    const availability = await Availability.findOne({ hostId });
-    console.log("Fetched availability:", availability);
-    return
+    // ✅ Prefer token ID, but fallback to body or query if needed
+    const hostId = req.user?._id || req.user?.id || req.body.hostId || req.query.hostId;
+
+    if (!hostId) {
+      return res.status(400).json({ success: false, message: "Host ID missing" });
+    }
+
+    // ✅ Fetch availability for this host
+    const availability = await Availability.find({ hostId });
+
+    if (!availability) {
+      return res.status(404).json({
+        success: false,
+        message: "No availability found for this host",
+      });
+    }
+
     res.json({ success: true, availability });
   } catch (error) {
     console.error("Error fetching availability:", error);
@@ -78,11 +91,17 @@ export const getMyAvailability = async (req, res) => {
   }
 };
 
+
 // ➕ Add New Availability
 export const addAvailability = async (req, res) => {
-
   try {
-    const hostId = req.user._id;
+    // ✅ Try to get hostId from token first, otherwise use request body
+    const hostId = req.user?._id || req.user?.id || req.body.hostId;
+
+    if (!hostId) {
+      return res.status(400).json({ success: false, message: "Host ID missing" });
+    }
+
     const {
       weekly,
       bufferBefore,
@@ -111,10 +130,13 @@ export const addAvailability = async (req, res) => {
   }
 };
 
-// ✏️ Update Availability
-export const updateAvailability = async (req, res) => {
+
+// ✏️ Update Availability by ID
+export const updateAvailabilityById = async (req, res) => {
   try {
-    const hostId = req.user._id;
+    const { id } = req.params; // get availability _id
+    const hostId = req.user?._id || req.user?.id || req.body.hostId || req.query.hostId;
+
     const {
       weekly,
       bufferBefore,
@@ -126,18 +148,14 @@ export const updateAvailability = async (req, res) => {
     } = req.body;
 
     const updated = await Availability.findOneAndUpdate(
-      { hostId },
-      {
-        weekly,
-        bufferBefore,
-        bufferAfter,
-        durations,
-        maxPerDay,
-        blockedDates,
-        timezone,
-      },
-      { new: true, upsert: true }
+      { _id: id, hostId }, // ensure host owns this availability
+      { weekly, bufferBefore, bufferAfter, durations, maxPerDay, blockedDates, timezone },
+      { new: true }
     );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Availability not found or not authorized." });
+    }
 
     res.json({ success: true, availability: updated });
   } catch (error) {
@@ -146,15 +164,16 @@ export const updateAvailability = async (req, res) => {
   }
 };
 
-// ❌ Delete Host Availability
-export const deleteAvailability = async (req, res) => {
+// ❌ Delete Availability by ID
+export const deleteAvailabilityById = async (req, res) => {
   try {
-    const hostId = req.user._id;
+    const { id } = req.params; // get availability _id
+   const hostId = req.user?._id || req.user?.id || req.body.hostId || req.query.hostId;
 
-    const deleted = await Availability.findOneAndDelete({ hostId });
+    const deleted = await Availability.findOneAndDelete({ _id: id, hostId });
 
     if (!deleted) {
-      return res.status(404).json({ success: false, message: "No availability found to delete." });
+      return res.status(404).json({ success: false, message: "Availability not found or not authorized." });
     }
 
     res.json({ success: true, message: "Availability deleted successfully." });

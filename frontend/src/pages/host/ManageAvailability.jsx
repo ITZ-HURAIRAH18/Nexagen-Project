@@ -1,18 +1,25 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axiosInstance";
 import HostHeader from "../../components/HostHeader";
+import EditAvailability from "./EditAvailability";
+import { useNavigate } from "react-router-dom";
 
 const ManageAvailability = () => {
-  const [availability, setAvailability] = useState(null);
+  const [availability, setAvailability] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingIndex, setEditingIndex] = useState(-1);
-  const [editSlot, setEditSlot] = useState({ day: "", start: "", end: "" });
+  const [viewData, setViewData] = useState(null); // for modal
+  const [editData, setEditData] = useState(null); // for edit page/modal
+  const navigate = useNavigate();
 
-  // 🟢 Fetch Availability of Logged-in Host
+  const handleEdit = (id) => {
+    navigate(`/host/edit-availability/${id}`);
+  };
+
+  // Fetch availability of logged-in host
   const fetchAvailability = async () => {
     try {
       const res = await axiosInstance.get("/host/availability/me");
-      setAvailability(res.data.availability);
+      setAvailability(res.data.availability || []); // don't wrap in []
     } catch (error) {
       console.error("Error fetching availability:", error);
     } finally {
@@ -20,179 +27,136 @@ const ManageAvailability = () => {
     }
   };
 
+
   useEffect(() => {
     fetchAvailability();
   }, []);
 
-  // ✏️ Start editing
-  const handleEditStart = (index) => {
-    if (!availability) return;
-    const slot = availability.weekly[index];
-    setEditingIndex(index);
-    setEditSlot({ day: slot.day || "", start: slot.start || "", end: slot.end || "" });
-  };
-
-  const handleEditCancel = () => {
-    setEditingIndex(-1);
-    setEditSlot({ day: "", start: "", end: "" });
-  };
-
-  // 💾 Save edited slot
-  const handleEditSave = async (index) => {
-    const updatedWeekly = [...availability.weekly];
-    updatedWeekly[index] = { ...updatedWeekly[index], ...editSlot };
-
+  // Delete availability
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this availability?")) return;
     try {
-      await axiosInstance.put("/host/availability/update", {
-        ...availability,
-        weekly: updatedWeekly,
-      });
-      alert("Availability updated!");
-      setEditingIndex(-1);
+      await axiosInstance.delete(`/host/availability/delete/${id}`);
+
+      alert("✅ Availability deleted successfully!");
       fetchAvailability();
     } catch (error) {
-      console.error("Error updating:", error);
-      alert(error.response?.data?.message || "Failed to update availability.");
+      console.error(error);
+      alert("Failed to delete availability.");
     }
   };
 
-  // ❌ Delete slot
-  const handleDelete = async (index) => {
-    if (!window.confirm("Are you sure you want to delete this slot?")) return;
-    const updatedWeekly = availability.weekly.filter((_, i) => i !== index);
-
-    try {
-      await axiosInstance.put("/host/availability/update", {
-        ...availability,
-        weekly: updatedWeekly,
-      });
-      alert("Slot deleted successfully!");
-      fetchAvailability();
-    } catch (error) {
-      console.error("Error deleting slot:", error);
-      alert(error.response?.data?.message || "Failed to delete slot.");
-    }
-  };
-
-  if (loading) {
+  if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500">
         Loading availability...
       </div>
     );
-  }
+
+  if (!availability.length)
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-gray-500">
+        <p>No availability data found.</p>
+      </div>
+    );
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <HostHeader />
-
-      <div className="max-w-5xl mx-auto p-8 bg-white shadow-md rounded-lg mt-8">
-        <h2 className="text-3xl font-semibold text-center mb-6 text-gray-800">
+      <div className="max-w-6xl mx-auto p-8 bg-white shadow-md rounded-lg mt-8">
+        <h2 className="text-3xl font-semibold text-gray-800 mb-6">
           Manage My Availability
         </h2>
 
-        {!availability || !availability.weekly?.length ? (
-          <p className="text-center text-gray-500 text-lg">
-            You have not added any availability yet.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border border-gray-300 text-sm text-gray-700 rounded-lg">
-              <thead>
-                <tr className="bg-gray-100 text-gray-800">
-                  <th className="p-3 border">Day</th>
-                  <th className="p-3 border">Start Time</th>
-                  <th className="p-3 border">End Time</th>
-                  <th className="p-3 border text-center">Actions</th>
+        <div className="overflow-x-auto">
+          <table className="w-full border border-gray-300 text-sm text-gray-700 rounded-lg">
+            <thead>
+              <tr className="bg-gray-100 text-gray-800">
+                <th className="p-3 border">Day(s)</th>
+                <th className="p-3 border">Start-End</th>
+                <th className="p-3 border">Max Per Day</th>
+                <th className="p-3 border">Timezone</th>
+                <th className="p-3 border text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {availability.map((item) => (
+                <tr key={item._id} className="hover:bg-gray-50 transition">
+                  <td className="border p-2 text-center">
+                    {item.weekly.map((w) => w.day).join(", ")}
+                  </td>
+                  <td className="border p-2 text-center">
+                    {item.weekly.map((w) => `${w.start}-${w.end}`).join(", ")}
+                  </td>
+                  <td className="border p-2 text-center">{item.maxPerDay}</td>
+                  <td className="border p-2 text-center">{item.timezone}</td>
+                  <td className="border p-2 text-center space-x-2">
+                    <button
+                      onClick={() => setViewData(item)}
+                      className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => handleEdit(item._id)}
+                      className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item._id)}
+                      className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {availability.weekly.map((slot, i) => (
-                  <tr key={i} className="hover:bg-gray-50 transition">
-                    {editingIndex === i ? (
-                      <>
-                        <td className="border p-2">
-                          <input
-                            className="border p-1 w-full rounded"
-                            value={editSlot.day}
-                            onChange={(e) =>
-                              setEditSlot((s) => ({ ...s, day: e.target.value }))
-                            }
-                          />
-                        </td>
-                        <td className="border p-2">
-                          <input
-                            type="time"
-                            className="border p-1 w-full rounded"
-                            value={editSlot.start}
-                            onChange={(e) =>
-                              setEditSlot((s) => ({ ...s, start: e.target.value }))
-                            }
-                          />
-                        </td>
-                        <td className="border p-2">
-                          <input
-                            type="time"
-                            className="border p-1 w-full rounded"
-                            value={editSlot.end}
-                            onChange={(e) =>
-                              setEditSlot((s) => ({ ...s, end: e.target.value }))
-                            }
-                          />
-                        </td>
-                        <td className="border p-2 text-center space-x-2">
-                          <button
-                            onClick={() => handleEditSave(i)}
-                            className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={handleEditCancel}
-                            className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500"
-                          >
-                            Cancel
-                          </button>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="border p-2 text-center font-medium">
-                          {slot.day}
-                        </td>
-                        <td className="border p-2 text-center">{slot.start}</td>
-                        <td className="border p-2 text-center">{slot.end}</td>
-                        <td className="border p-2 text-center space-x-2">
-                          <button
-                            onClick={() => handleEditStart(i)}
-                            className="bg-yellow-400 text-white px-3 py-1 rounded hover:bg-yellow-500"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(i)}
-                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-            {/* Additional info section */}
-            <div className="mt-8 p-4 bg-gray-50 rounded-lg text-gray-700">
-              <h3 className="text-lg font-semibold mb-2">Other Settings</h3>
-              <p><strong>Buffer Before:</strong> {availability.bufferBefore} min</p>
-              <p><strong>Buffer After:</strong> {availability.bufferAfter} min</p>
-              <p><strong>Duration:</strong> {availability.durations?.[0]} min</p>
-              <p><strong>Max Bookings Per Day:</strong> {availability.maxPerDay}</p>
-              <p><strong>Timezone:</strong> {availability.timezone}</p>
+        {/* View Modal */}
+        {viewData && (
+          <div className="fixed inset-0 bg-white bg-opacity-10 flex items-center justify-center z-50">
+
+
+            <div className="bg-white p-6 rounded-xl w-96 max-h-[80vh] overflow-y-auto">
+              <h3 className="text-xl font-semibold mb-4">Availability Details</h3>
+              <p><strong>Buffer Before:</strong> {viewData.bufferBefore} min</p>
+              <p><strong>Buffer After:</strong> {viewData.bufferAfter} min</p>
+              <p><strong>Duration:</strong> {viewData.durations[0]} min</p>
+              <p><strong>Max Per Day:</strong> {viewData.maxPerDay}</p>
+              <p><strong>Timezone:</strong> {viewData.timezone}</p>
+              <p className="mt-2 font-semibold">Weekly Slots:</p>
+              <ul className="list-disc list-inside mb-2">
+                {viewData.weekly.map((w, i) => (
+                  <li key={i}>{w.day}: {w.start} - {w.end}</li>
+                ))}
+              </ul>
+              <p className="mt-2 font-semibold">Blocked Dates:</p>
+              <ul className="list-disc list-inside">
+                {viewData.blockedDates.length
+                  ? viewData.blockedDates.map((d, i) => <li key={i}>{d}</li>)
+                  : <li>None</li>
+                }
+              </ul>
+              <button
+                onClick={() => setViewData(null)}
+                className="mt-4 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 w-full"
+              >
+                Close
+              </button>
             </div>
           </div>
+        )}
+
+        {/* Edit Modal/Page */}
+        {editData && (
+          <EditAvailability
+            availability={editData}
+            onClose={() => { setEditData(null); fetchAvailability(); }}
+          />
         )}
       </div>
     </div>
@@ -200,3 +164,4 @@ const ManageAvailability = () => {
 };
 
 export default ManageAvailability;
+

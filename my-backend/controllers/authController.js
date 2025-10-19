@@ -7,10 +7,16 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (user) =>
   jwt.sign(
-    { id: user._id, email: user.email, role: user.role },
+    {
+      id: user._id,
+        name: user.fullName,
+      email: user.email,
+      role: user.role
+    },
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
+
 
 // Email/Password Signup
 export const signup = async (req, res) => {

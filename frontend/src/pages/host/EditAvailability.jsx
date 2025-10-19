@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance";
 import HostHeader from "../../components/HostHeader";
 
-const AddAvailability = () => {
+const EditAvailability = () => {
+  const { id } = useParams(); // get availability ID from URL
+  const navigate = useNavigate();
+
   const [weekly, setWeekly] = useState([{ day: "", start: "", end: "" }]);
   const [bufferBefore, setBufferBefore] = useState(10);
   const [bufferAfter, setBufferAfter] = useState(10);
@@ -10,80 +14,83 @@ const AddAvailability = () => {
   const [maxPerDay, setMaxPerDay] = useState(5);
   const [timezone, setTimezone] = useState("Asia/Karachi");
   const [blockedDates, setBlockedDates] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Add new day slot
-  const handleAddDay = () => {
-    setWeekly([...weekly, { day: "", start: "", end: "" }]);
-  };
+  // Fetch availability data by ID
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        const res = await axiosInstance.get(`/host/availability/${id}`);
+        const data = res.data;
+        setWeekly(data.weekly || [{ day: "", start: "", end: "" }]);
+        setBufferBefore(data.bufferBefore || 10);
+        setBufferAfter(data.bufferAfter || 10);
+        setDurations(data.durations?.[0] || 30);
+        setMaxPerDay(data.maxPerDay || 5);
+        setTimezone(data.timezone || "Asia/Karachi");
+        setBlockedDates(data.blockedDates || []);
+      } catch (error) {
+        console.error(error);
+        alert("Failed to fetch availability data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAvailability();
+  }, [id]);
 
-  // Update day slot
-  const handleChange = (index, field, value) => {
-    const updated = weekly.map((s, i) =>
-      i === index ? { ...s, [field]: value } : s
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Loading availability...
+      </div>
     );
+
+  // Handle weekly slot changes
+  const handleSlotChange = (index, field, value) => {
+    const updated = weekly.map((w, i) => (i === index ? { ...w, [field]: value } : w));
     setWeekly(updated);
   };
 
-  // Add blocked date
-  const handleAddBlockedDate = () => {
-    setBlockedDates([...blockedDates, ""]);
-  };
+  const handleAddSlot = () => setWeekly([...weekly, { day: "", start: "", end: "" }]);
+  const handleDeleteSlot = (index) => setWeekly(weekly.filter((_, i) => i !== index));
 
-  // Update blocked date
+  // Blocked dates handlers
+  const handleAddBlockedDate = () => setBlockedDates([...blockedDates, ""]);
   const handleBlockedDateChange = (index, value) => {
     const updated = blockedDates.map((d, i) => (i === index ? value : d));
     setBlockedDates(updated);
   };
-
-  // Remove blocked date
-  const handleRemoveBlockedDate = (index) => {
+  const handleRemoveBlockedDate = (index) =>
     setBlockedDates(blockedDates.filter((_, i) => i !== index));
-  };
 
-  // Save availability
+  // Save changes
   const handleSave = async () => {
     try {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      const hostId = storedUser?.id; // ✅ get hostId from localStorage
-
-      if (!hostId) {
-        alert("User not found — please log in again.");
-        return;
-      }
-
-      const payload = {
-        hostId,
+      await axiosInstance.put(`/host/availability/update/${id}`, {
         weekly,
-        bufferBefore: Number(bufferBefore),
-        bufferAfter: Number(bufferAfter),
-        durations: Number(durations),
-        maxPerDay: Number(maxPerDay),
+        bufferBefore,
+        bufferAfter,
+        durations: [durations],
+        maxPerDay,
         timezone,
         blockedDates,
-      };
-
-      const res = await axiosInstance.post("/host/availability/add", payload);
-      alert("✅ Availability added successfully!");
-      console.log(res.data);
+      });
+      alert("✅ Availability updated successfully!");
+      navigate("/host/manage-availability"); // redirect back to manage page
     } catch (error) {
-      console.error("Failed to add availability:", error);
-      alert(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Failed to add availability"
-      );
+      console.error(error);
+      alert("Failed to update availability.");
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <HostHeader />
-      <div className="p-6 max-w-3xl mx-auto bg-white shadow-md rounded-xl">
-        <h2 className="text-2xl font-bold mb-6 text-center">
-          🕓 Add Your Availability
-        </h2>
+      <div className="p-6 max-w-3xl mx-auto bg-white shadow-md rounded-xl mt-8">
+        <h2 className="text-2xl font-bold mb-6 text-center">🕓 Edit Availability</h2>
 
-        {/* Weekly Availability Section */}
+        {/* Weekly Slots */}
         <h3 className="font-semibold mb-2">Set Available Days & Times</h3>
         {weekly.map((slot, index) => (
           <div
@@ -97,7 +104,7 @@ const AddAvailability = () => {
                 placeholder="e.g. Monday"
                 className="border p-2 rounded w-full"
                 value={slot.day}
-                onChange={(e) => handleChange(index, "day", e.target.value)}
+                onChange={(e) => handleSlotChange(index, "day", e.target.value)}
               />
             </div>
             <div>
@@ -106,7 +113,7 @@ const AddAvailability = () => {
                 type="time"
                 className="border p-2 rounded w-full"
                 value={slot.start}
-                onChange={(e) => handleChange(index, "start", e.target.value)}
+                onChange={(e) => handleSlotChange(index, "start", e.target.value)}
               />
             </div>
             <div>
@@ -115,13 +122,19 @@ const AddAvailability = () => {
                 type="time"
                 className="border p-2 rounded w-full"
                 value={slot.end}
-                onChange={(e) => handleChange(index, "end", e.target.value)}
+                onChange={(e) => handleSlotChange(index, "end", e.target.value)}
               />
             </div>
+            <button
+              onClick={() => handleDeleteSlot(index)}
+              className="col-span-3 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+            >
+              Delete Slot
+            </button>
           </div>
         ))}
         <button
-          onClick={handleAddDay}
+          onClick={handleAddSlot}
           className="bg-gray-200 px-3 py-1 rounded mb-5 hover:bg-gray-300"
         >
           + Add Another Day
@@ -187,7 +200,7 @@ const AddAvailability = () => {
           />
         </div>
 
-        {/* Blocked Dates Section */}
+        {/* Blocked Dates */}
         <h3 className="font-semibold mb-2">Blocked Dates</h3>
         {blockedDates.map((date, index) => (
           <div key={index} className="flex items-center gap-2 mb-2">
@@ -212,16 +225,22 @@ const AddAvailability = () => {
           + Add Blocked Date
         </button>
 
-        {/* Save Button */}
+        {/* Save */}
         <button
           onClick={handleSave}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
         >
-          💾 Save Availability
+          💾 Save Changes
+        </button>
+        <button
+          onClick={() => navigate("/host/manage-availability")}
+          className="mt-2 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 w-full"
+        >
+          Cancel
         </button>
       </div>
     </div>
   );
 };
 
-export default AddAvailability;
+export default EditAvailability;

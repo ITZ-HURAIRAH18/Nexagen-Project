@@ -16,6 +16,8 @@ import HostDashboard from "./pages/host/HostDashboard";
 import HostBookings from "./pages/host/HostBookings";
 import HostAddAvailability from "./pages/host/AddAvailability";
 import HostManageAvailability from "./pages/host/ManageAvailability";
+import EditAvailability from "./pages/host/EditAvailability";
+
 import HostSettings from "./pages/host/HostSettings";
 
 // 👤 User pages
@@ -93,6 +95,7 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+                <Route path="/host/edit-availability/:id" element={<EditAvailability />} />
           <Route
             path="/host/settings"
             element={
