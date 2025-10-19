@@ -50,9 +50,10 @@ const AdminStats = () => {
               <ul className="list-disc pl-5">
                 {stats.topHosts?.map((host) => (
                   <li key={host._id}>
-                    {host._id} — {host.totalBookings} bookings
+                    {host.fullName} — {host.totalBookings} bookings
                   </li>
                 ))}
+
               </ul>
             </div>
           </div>

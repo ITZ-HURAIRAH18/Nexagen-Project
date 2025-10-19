@@ -31,7 +31,32 @@ const HostBookings = () => {
                 <td className="p-2 border">{b.guest.name}</td>
                 <td className="p-2 border">{new Date(b.start).toLocaleString()}</td>
                 <td className="p-2 border">{new Date(b.end).toLocaleString()}</td>
-                <td className="p-2 border">{b.status}</td>
+                <td className="p-2 border">
+                  <select
+                    value={b.status}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value;
+                      try {
+                        const res = await axiosInstance.put(`/host/bookings/update-status/${b._id}`, {
+                          status: newStatus,
+                        });
+                        // Update local state
+                        setBookings((prev) =>
+                          prev.map((bk) => (bk._id === b._id ? { ...bk, status: newStatus } : bk))
+                        );
+                      } catch (err) {
+                        console.error("Error updating status:", err);
+                      }
+                    }}
+                    className="border p-1 rounded"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="rescheduled">Rescheduled</option>
+                  </select>
+                </td>
+
               </tr>
             ))}
           </tbody>
