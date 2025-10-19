@@ -1,33 +1,35 @@
 import { useState } from "react";
 import axios from "../api/axiosInstance";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { useAuth } from "../context/AuthContext"; // ✅ correct import
 
 const LoginRole = () => {
-  const { roleParam } = useParams(); // "user" or "host" or "admin"
+  const { roleParam } = useParams();
+  const { login } = useAuth(); // ✅ use hook here
   const [form, setForm] = useState({ email: "", password: "" });
+
+  const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const roleLabel = { user: "User", host: "Host", admin: "Admin" }[roleParam] || "User";
+
   const handleLogin = async (e) => {
     e.preventDefault();
-
-    const role = roleParam; // use param from route
-
     if (!form.email || !form.password) {
       setError("Email and password are required");
       return;
     }
-
     try {
       setLoading(true);
-      const res = await axios.post("/auth/login", { ...form, role });
-      localStorage.setItem("token", res.data.token);
-      setError("");
+      const res = await axios.post("/auth/login", { ...form, role: roleParam });
+      login(res.data.token); // update context and localStorage
       redirect(res.data.user.role);
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Login failed";
-      setError(msg);
+      setError(err.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -36,14 +38,11 @@ const LoginRole = () => {
   const handleGoogleLogin = async (response) => {
     try {
       setLoading(true);
-      const role = roleParam;
-      const res = await axios.post("/auth/google-login", { token: response.credential, role });
-      localStorage.setItem("token", res.data.token);
-      setError("");
+      const res = await axios.post("/auth/google-login", { token: response.credential, role: roleParam });
+      login(res.data.token); // update context and localStorage
       redirect(res.data.user.role);
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || "Google login failed";
-      setError(msg);
+      setError(err.response?.data?.message || "Google login failed");
     } finally {
       setLoading(false);
     }
@@ -56,19 +55,110 @@ const LoginRole = () => {
   };
 
   return (
-    <div className="flex flex-col items-center min-h-screen justify-center bg-gray-100">
-      <h1 className="text-2xl font-bold mb-4">Login ({roleParam.toUpperCase()})</h1>
-      <form onSubmit={handleLogin} className="bg-white p-6 rounded shadow-md w-80">
-        <input type="email" placeholder="Email" className="border p-2 w-full mb-2" onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <input type="password" placeholder="Password" className="border p-2 w-full mb-2" onChange={(e) => setForm({ ...form, password: e.target.value })} />
-        <button disabled={loading} className="bg-blue-600 text-white w-full py-2 rounded">{loading ? "Logging in..." : "Login"}</button>
-        {error && <p className="text-red-500 mt-2">{error}</p>}
-      </form>
-      {roleParam !== "admin" && (
-        <div className="mt-4">
-          <GoogleLogin onSuccess={handleGoogleLogin} onError={() => setError("Google Sign-In failed")} />
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
+      <div className="w-full max-w-md">
+        {/* Card */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-200/60 p-8">
+          {/* Header */}
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-md mb-3">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-slate-800">Welcome back</h1>
+            <p className="text-sm text-slate-500 mt-1">Sign in to your {roleLabel} account</p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <input
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="you@example.com"
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showPwd ? "text" : "password"}
+                  required
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full pl-4 pr-10 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPwd ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed transition"
+            >
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+
+          {/* Divider */}
+          {roleParam !== "admin" && (
+            <>
+              <div className="flex items-center my-6">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="px-3 text-xs text-slate-400">Or continue with</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleLogin}
+                  onError={() => setError("Google Sign-In failed")}
+                  useOneTap
+                  theme="filled_black"
+                  size="large"
+                  text="signin_with"
+                  shape="rectangular"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Footer */}
+          <p className="text-center text-sm text-slate-500 mt-6">
+            Don’t have an account?{" "}
+            <Link
+              to={`/signup/${roleParam}`}
+              className="font-semibold text-blue-600 hover:underline"
+            >
+              Sign up
+            </Link>
+          </p>
         </div>
-      )}
+
+        {/* Back to home */}
+        <Link
+          to="/"
+          className="block text-center mt-6 text-sm text-slate-500 hover:text-slate-700"
+        >
+          ← Back to home
+        </Link>
+      </div>
     </div>
   );
 };

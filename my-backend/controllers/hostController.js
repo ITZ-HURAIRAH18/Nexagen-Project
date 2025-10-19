@@ -201,3 +201,16 @@ export const updateHostSettings = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+// Get single availability by ID
+export const getAvailabilityById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const availability = await Availability.findById(id); // assuming Mongoose model Availability
+    if (!availability) return res.status(404).json({ message: "Availability not found" });
+    res.json(availability);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
