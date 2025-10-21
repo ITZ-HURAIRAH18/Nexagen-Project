@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance";
 import HostHeader from "../../components/HostHeader";
 
+
 const EditAvailability = () => {
   const { id } = useParams(); // get availability ID from URL
   const navigate = useNavigate();
