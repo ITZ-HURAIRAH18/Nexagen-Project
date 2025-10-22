@@ -14,9 +14,10 @@ const Availability = () => {
       .catch(err => console.error(err));
   }, []);
 
-  const handleBook = (hostId) => {
-    navigate(`/user/book/${hostId}`);
+  const handleBook = (host) => {
+    navigate(`/user/book/${host.hostId._id}`);
   };
+
 
   const formatTime = (timeStr) => {
     if (!timeStr) return "";
@@ -77,11 +78,12 @@ const Availability = () => {
               )}
 
               <button
-                onClick={() => handleBook(h.hostId._id)}
+                onClick={() => handleBook(h)}
                 className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
                 Book
               </button>
+
             </div>
           ))
         )}
