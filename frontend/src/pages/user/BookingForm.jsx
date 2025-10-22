@@ -49,14 +49,19 @@ useEffect(() => {
   }
 }, [host, hostId]);
 
-  // ✅ Auto-calculate end time when start time or duration changes
-  useEffect(() => {
-    if (form.start && form.duration) {
-      const startDate = new Date(form.start);
-      const endDate = new Date(startDate.getTime() + form.duration * 60000);
-      setForm((prev) => ({ ...prev, end: endDate.toISOString().slice(0, 16) }));
-    }
-  }, [form.start, form.duration]);
+useEffect(() => {
+  if (form.start && form.duration) {
+    const startDate = new Date(form.start);
+    const endDate = new Date(startDate.getTime() + form.duration * 60000);
+
+    // Format end time for datetime-local input (local timezone)
+    const offset = endDate.getTimezoneOffset();
+    const localDate = new Date(endDate.getTime() - offset * 60000);
+    const formatted = localDate.toISOString().slice(0, 16);
+
+    setForm((prev) => ({ ...prev, end: formatted }));
+  }
+}, [form.start, form.duration]);
 
   // 🕒 Helper function to format time as AM/PM
   const formatTime = (timeStr) => {

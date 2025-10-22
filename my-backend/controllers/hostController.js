@@ -218,8 +218,85 @@ export const getAvailabilityById = async (req, res) => {
 };
 
 
+import axios from "axios";
 
-// Update Booking Status
+// export const updateBookingStatus = async (req, res) => {
+//   const bookingId = req.params.id;
+//   const { status } = req.body;
+
+//   const allowedStatuses = ["confirmed", "cancelled", "rescheduled", "pending"];
+//   if (!allowedStatuses.includes(status)) {
+//     return res.status(400).json({ message: "Invalid status value" });
+//   }
+
+//   if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+//     return res.status(400).json({ message: "Invalid booking ID" });
+//   }
+
+//   try {
+//     const booking = await Booking.findById(bookingId);
+//     if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+//     // Ensure host owns this booking
+//     if (!req.user || booking.hostId.toString() !== req.user._id.toString()) {
+//       return res.status(403).json({ message: "Not authorized" });
+//     }
+
+//     booking.status = status;
+
+//     // 🟢 If confirmed → create Daily meeting
+//     if (status === "confirmed") {
+//       // get host's availability to know buffer time
+//       const availability = await Availability.findOne({ hostId: booking.hostId });
+//       const bufferBefore = availability?.bufferBefore || 0;
+//       const bufferAfter = availability?.bufferAfter || 0;
+
+//       const startTime = new Date(booking.start);
+//       const endTime = new Date(booking.end);
+
+//       // 🕒 Adjust window for allowed access
+//       const startWithBuffer = new Date(startTime.getTime() - bufferBefore * 60000);
+//       const endWithBuffer = new Date(endTime.getTime() + bufferAfter * 60000);
+
+//       // 🔗 Create Daily room via API
+//       const response = await axios.post(
+//         "https://api.daily.co/v1/rooms",
+//         {
+//           name: `booking-${booking._id}`,
+//           properties: {
+//             exp: Math.floor(endWithBuffer.getTime() / 1000), // auto-expire after buffer end
+//             start_audio_off: true,
+//             start_video_off: true,
+//             enable_screenshare: true,
+//             nbf: Math.floor(startWithBuffer.getTime() / 1000), // not before buffer start
+//           },
+//         },
+//         {
+//           headers: {
+//             Authorization: `Bearer ${process.env.DAILY_API_KEY}`,
+//             "Content-Type": "application/json",
+//           },
+//         }
+//       );
+
+//       booking.meetingLink = response.data.url;
+//     }
+
+//     await booking.save();
+
+//     res.json({
+//       message:
+//         status === "confirmed"
+//           ? "Booking confirmed and meeting link generated."
+//           : "Booking status updated successfully.",
+//       booking,
+//     });
+//   } catch (err) {
+//     console.error("Error updating booking status:", err.response?.data || err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 
 export const updateBookingStatus = async (req, res) => {
   const bookingId = req.params.id;
@@ -244,11 +321,58 @@ export const updateBookingStatus = async (req, res) => {
     }
 
     booking.status = status;
+
+    // 🟢 If confirmed → create Daily meeting
+    if (status === "confirmed") {
+      // get host's availability to know buffer time
+      const availability = await Availability.findOne({ hostId: booking.hostId });
+      const bufferBefore = availability?.bufferBefore || 0;
+      const bufferAfter = availability?.bufferAfter || 0;
+
+      const startTime = new Date(booking.start);
+      const endTime = new Date(booking.end);
+
+      // 🕒 Adjust window for allowed access
+      const startWithBuffer = new Date(startTime.getTime() - bufferBefore * 60000);
+      const endWithBuffer = new Date(endTime.getTime() + bufferAfter * 60000);
+
+      // ✅ Create Daily room (Free plan–safe)
+      const response = await axios.post(
+        "https://api.daily.co/v1/rooms",
+        {
+          name: `booking-${booking._id}`,
+          properties: {
+            max_participants: 15, // ✅ Allow up to 15 participants
+            enable_screenshare: true,
+            start_audio_off: true,
+            start_video_off: true,
+            // 🟡 Optional: comment these out if you still see "add a card"
+            exp: Math.floor(endWithBuffer.getTime() / 1000),
+            nbf: Math.floor(startWithBuffer.getTime() / 1000),
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.DAILY_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      booking.meetingLink = response.data.url;
+    }
+
     await booking.save();
 
-    res.json({ message: "Booking status updated successfully", booking });
+    res.json({
+      message:
+        status === "confirmed"
+          ? "Booking confirmed and meeting link generated."
+          : "Booking status updated successfully.",
+      booking,
+    });
   } catch (err) {
-    console.error("Error updating booking status:", err);
+    console.error("Error updating booking status:", err.response?.data || err);
     res.status(500).json({ message: "Server error" });
   }
 };

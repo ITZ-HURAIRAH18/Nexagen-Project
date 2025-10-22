@@ -8,8 +8,8 @@ const UserHeader = () => {
 
   const handleLogout = async () => {
     if (!window.confirm("Are you sure you want to logout?")) return;
-    try { await logout(); } 
-    catch (err) { console.error("Logout failed", err); } 
+    try { await logout(); }
+    catch (err) { console.error("Logout failed", err); }
     finally { navigate("/", { replace: true }); }
   };
 
@@ -36,6 +36,15 @@ const UserHeader = () => {
           >
             My Bookings
           </NavLink>
+          <NavLink
+            to="/user/meeting-room"
+            className={({ isActive }) =>
+              isActive ? "underline font-semibold" : ""
+            }
+          >
+            Join Meeting
+          </NavLink>
+
         </nav>
       </div>
       <button onClick={handleLogout} className="bg-red-500 px-3 py-1 rounded mt-2 md:mt-0">

@@ -48,8 +48,7 @@ const HostHeader = () => {
             <NavLink
               to="/host/dashboard"
               className={({ isActive }) =>
-                `hover:text-yellow-300 ${
-                  isActive ? "font-semibold text-yellow-300" : ""
+                `hover:text-yellow-300 ${isActive ? "font-semibold text-yellow-300" : ""
                 }`
               }
             >
@@ -61,8 +60,7 @@ const HostHeader = () => {
             <NavLink
               to="/host/bookings"
               className={({ isActive }) =>
-                `hover:text-yellow-300 ${
-                  isActive ? "font-semibold text-yellow-300" : ""
+                `hover:text-yellow-300 ${isActive ? "font-semibold text-yellow-300" : ""
                 }`
               }
             >
@@ -74,8 +72,7 @@ const HostHeader = () => {
             <NavLink
               to="/host/add-availability"
               className={({ isActive }) =>
-                `hover:text-yellow-300 ${
-                  isActive ? "font-semibold text-yellow-300" : ""
+                `hover:text-yellow-300 ${isActive ? "font-semibold text-yellow-300" : ""
                 }`
               }
             >
@@ -87,8 +84,7 @@ const HostHeader = () => {
             <NavLink
               to="/host/manage-availability"
               className={({ isActive }) =>
-                `hover:text-yellow-300 ${
-                  isActive ? "font-semibold text-yellow-300" : ""
+                `hover:text-yellow-300 ${isActive ? "font-semibold text-yellow-300" : ""
                 }`
               }
             >
@@ -100,14 +96,24 @@ const HostHeader = () => {
             <NavLink
               to="/host/settings"
               className={({ isActive }) =>
-                `hover:text-yellow-300 ${
-                  isActive ? "font-semibold text-yellow-300" : ""
+                `hover:text-yellow-300 ${isActive ? "font-semibold text-yellow-300" : ""
                 }`
               }
             >
               Settings
             </NavLink>
           </li>
+          <li>
+            <NavLink
+              to="/host/meeting-room"
+              className={({ isActive }) =>
+                `hover:text-yellow-300 ${isActive ? "font-semibold text-yellow-300" : ""}`
+              }
+            >
+              Join Meeting
+            </NavLink>
+          </li>
+
         </ul>
       </nav>
     </header>
