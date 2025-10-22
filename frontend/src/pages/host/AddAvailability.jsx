@@ -6,17 +6,17 @@ const AddAvailability = () => {
   const [weekly, setWeekly] = useState([{ day: "", start: "", end: "" }]);
   const [bufferBefore, setBufferBefore] = useState(10);
   const [bufferAfter, setBufferAfter] = useState(10);
-  const [durations, setDurations] = useState(30);
+  const [durations, setDurations] = useState(30); // ✅ Added — was missing
   const [maxPerDay, setMaxPerDay] = useState(5);
   const [timezone, setTimezone] = useState("Asia/Karachi");
   const [blockedDates, setBlockedDates] = useState([]);
 
-  // Add new day slot
+  // ➕ Add new day slot
   const handleAddDay = () => {
     setWeekly([...weekly, { day: "", start: "", end: "" }]);
   };
 
-  // Update day slot
+  // 🔁 Update day slot
   const handleChange = (index, field, value) => {
     const updated = weekly.map((s, i) =>
       i === index ? { ...s, [field]: value } : s
@@ -24,23 +24,23 @@ const AddAvailability = () => {
     setWeekly(updated);
   };
 
-  // Add blocked date
+  // ➕ Add blocked date
   const handleAddBlockedDate = () => {
     setBlockedDates([...blockedDates, ""]);
   };
 
-  // Update blocked date
+  // 🔁 Update blocked date
   const handleBlockedDateChange = (index, value) => {
     const updated = blockedDates.map((d, i) => (i === index ? value : d));
     setBlockedDates(updated);
   };
 
-  // Remove blocked date
+  // ❌ Remove blocked date
   const handleRemoveBlockedDate = (index) => {
     setBlockedDates(blockedDates.filter((_, i) => i !== index));
   };
 
-  // Save availability
+  // 💾 Save availability
   const handleSave = async () => {
     try {
       const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -100,6 +100,7 @@ const AddAvailability = () => {
                 onChange={(e) => handleChange(index, "day", e.target.value)}
               />
             </div>
+
             <div>
               <label className="block text-sm font-medium mb-1">Start Time</label>
               <input
@@ -108,7 +109,13 @@ const AddAvailability = () => {
                 value={slot.start}
                 onChange={(e) => handleChange(index, "start", e.target.value)}
               />
+              {slot.start && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {Number(slot.start.split(":")[0]) >= 12 ? "PM" : "AM"}
+                </p>
+              )}
             </div>
+
             <div>
               <label className="block text-sm font-medium mb-1">End Time</label>
               <input
@@ -117,9 +124,15 @@ const AddAvailability = () => {
                 value={slot.end}
                 onChange={(e) => handleChange(index, "end", e.target.value)}
               />
+              {slot.end && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {Number(slot.end.split(":")[0]) >= 12 ? "PM" : "AM"}
+                </p>
+              )}
             </div>
           </div>
         ))}
+
         <button
           onClick={handleAddDay}
           className="bg-gray-200 px-3 py-1 rounded mb-5 hover:bg-gray-300"

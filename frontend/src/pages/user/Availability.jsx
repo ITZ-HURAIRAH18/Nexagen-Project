@@ -18,6 +18,18 @@ const Availability = () => {
     navigate(`/user/book/${hostId}`);
   };
 
+  const formatTime = (timeStr) => {
+    if (!timeStr) return "";
+    if (timeStr.toLowerCase().includes("am") || timeStr.toLowerCase().includes("pm"))
+      return timeStr; // already formatted
+
+    let [hours, minutes] = timeStr.split(":").map(Number);
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${hours.toString().padStart(2, "0")}:${minutes
+      .toString()
+      .padStart(2, "0")} ${ampm}`;
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       <UserHeader />
@@ -32,7 +44,7 @@ const Availability = () => {
               <h3 className="text-lg font-semibold">{h.hostId.name}</h3>
               <p><span className="font-medium">Email:</span> {h.hostId.email}</p>
               <p><span className="font-medium">Timezone:</span> {h.timezone || "Not specified"}</p>
-              
+
               <div className="mt-2">
                 <h4 className="font-medium">Weekly Availability:</h4>
                 {h.weekly.length === 0 ? (
@@ -40,7 +52,8 @@ const Availability = () => {
                 ) : (
                   h.weekly.map((d, i) => (
                     <p key={i}>
-                      <span className="font-medium">{d.day}:</span> {d.start} - {d.end}
+                      <span className="font-medium">{d.day}:</span>{" "}
+                      {formatTime(d.start)} - {formatTime(d.end)}
                     </p>
                   ))
                 )}
