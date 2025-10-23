@@ -36,12 +36,15 @@ const Availability = () => {
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")} ${ampm}`;
   };
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+ if (loading)
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <UserHeader />
+      <div className="flex items-center justify-center py-32">
         <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
-    );
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">

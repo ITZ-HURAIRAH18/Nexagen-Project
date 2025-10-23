@@ -11,7 +11,13 @@ import {
   ExclamationCircleIcon,
   UserCircleIcon
 } from "@heroicons/react/24/outline";
+/* ---------- global helpers ---------- */
+const formatDate = (d) =>
+  new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(d));
 
+const formatTime = (d) =>
+  new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(d));
+  /* ---------- render ---------- */
 const UserDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -45,12 +51,6 @@ const UserDashboard = () => {
       <ExclamationCircleIcon className="w-4 h-4" />
     );
 
-  const formatDate = (d) =>
-    new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(d));
-  const formatTime = (d) =>
-    new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(d));
-
-  /* ---------- render ---------- */
   return (
     <>
       <div className={`min-h-screen bg-gray-50 ${selected ? "blur-sm" : ""}`}>
