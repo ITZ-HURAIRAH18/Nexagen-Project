@@ -35,7 +35,7 @@ const BookingForm = () => {
         email: user.email || prev.email,
       }));
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (!host) {

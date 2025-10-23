@@ -25,7 +25,7 @@ import Availability from "./pages/user/Availability";
 import Bookings from "./pages/user/Bookings";
 import BookingForm from "./pages/user/BookingForm";
 
-import MeetingRoom from "./pages/MeetingRoom";
+
 // 🔒 Protected route wrapper
 import ProtectedRoute from "./routes/ProtectedRoute";
 
@@ -148,8 +148,7 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="/host/meeting-room" element={<MeetingRoom />} />
-          <Route path="/user/meeting-room" element={<MeetingRoom />} />
+          
 
         </Routes>
       </BrowserRouter>

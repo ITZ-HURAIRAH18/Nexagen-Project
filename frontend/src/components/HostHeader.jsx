@@ -103,16 +103,7 @@ const HostHeader = () => {
               Settings
             </NavLink>
           </li>
-          <li>
-            <NavLink
-              to="/host/meeting-room"
-              className={({ isActive }) =>
-                `hover:text-yellow-300 ${isActive ? "font-semibold text-yellow-300" : ""}`
-              }
-            >
-              Join Meeting
-            </NavLink>
-          </li>
+         
 
         </ul>
       </nav>
