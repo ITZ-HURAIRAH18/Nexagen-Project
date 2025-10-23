@@ -7,11 +7,11 @@ import toast, { Toaster } from "react-hot-toast";
 import { useLocation } from "react-router-dom";
 
 const BookingForm = () => {
-const { hostId } = useParams();
-const location = useLocation();
-const navigate = useNavigate();
+  const { hostId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-const [host, setHost] = useState(location.state?.host || null);
+  const [host, setHost] = useState(location.state?.host || null);
 
   const [form, setForm] = useState({
     name: "",
@@ -37,37 +37,38 @@ const [host, setHost] = useState(location.state?.host || null);
     }
   }, [user]);
 
-useEffect(() => {
-  if (!host) {
-    axiosInstance
-      .get("/user/hosts/availability")
-      .then((res) => {
-        const h = res.data.availability.find((a) => a.hostId._id === hostId);
-        if (h) setHost(h);
-      })
-      .catch((err) => console.error("Error fetching availability:", err));
-  }
-}, [host, hostId]);
+  useEffect(() => {
+    if (!host) {
+      axiosInstance
+        .get("/user/hosts/availability")
+        .then((res) => {
+          const h = res.data.availability.find((a) => a.hostId._id === hostId);
+          if (h) setHost(h);
+        })
+        .catch((err) => console.error("Error fetching availability:", err));
+    }
+  }, [hostId]);
 
-useEffect(() => {
-  if (form.start && form.duration) {
-    const startDate = new Date(form.start);
-    const endDate = new Date(startDate.getTime() + form.duration * 60000);
+  useEffect(() => {
+    if (form.start && form.duration) {
+      const startDate = new Date(form.start);
+      const endDate = new Date(startDate.getTime() + form.duration * 60000);
 
-    // Format end time for datetime-local input (local timezone)
-    const offset = endDate.getTimezoneOffset();
-    const localDate = new Date(endDate.getTime() - offset * 60000);
-    const formatted = localDate.toISOString().slice(0, 16);
+      // Format end time for datetime-local input (local timezone)
+      const offset = endDate.getTimezoneOffset();
+      const localDate = new Date(endDate.getTime() - offset * 60000);
+      const formatted = localDate.toISOString().slice(0, 16);
 
-    setForm((prev) => ({ ...prev, end: formatted }));
-  }
-}, [form.start, form.duration]);
+      setForm((prev) => ({ ...prev, end: formatted }));
+    }
+  }, [form.start, form.duration]);
 
   // 🕒 Helper function to format time as AM/PM
   const formatTime = (timeStr) => {
     if (!timeStr) return "";
+    timeStr = timeStr.split(":").slice(0, 2).join(":"); // ✅ handles "09:00:00"
     if (timeStr.toLowerCase().includes("am") || timeStr.toLowerCase().includes("pm"))
-      return timeStr; // already formatted
+      return timeStr;
 
     let [hours, minutes] = timeStr.split(":").map(Number);
     const ampm = hours >= 12 ? "PM" : "AM";
@@ -113,6 +114,7 @@ useEffect(() => {
   };
 
   if (!host)
+
     return (
       <div>
         <UserHeader />
@@ -120,17 +122,20 @@ useEffect(() => {
       </div>
     );
 
-  // ✅ Get today's date/time limits from host availability
   const today = new Date();
+  const todayDay = today.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+
   const weeklySlot = host.weekly.find(
-    (slot) =>
-      slot.day.toLowerCase() ===
-      today.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase()
+    (slot) => slot.day?.trim().toLowerCase() === todayDay
   );
 
-  const minTime = weeklySlot ? `${weeklySlot.start}` : "09:00";
-  const maxTime = weeklySlot ? `${weeklySlot.end}` : "17:00";
+  // ✅ Format start/end time for display
+  const minTime = weeklySlot ? weeklySlot.start : "09:00";
+  const maxTime = weeklySlot ? weeklySlot.end : "17:00";
 
+  const formattedAvailability = weeklySlot
+    ? `${weeklySlot.day}: ${formatTime(weeklySlot.start)} - ${formatTime(weeklySlot.end)}`
+    : "Not available today";
   return (
     <div className="min-h-screen bg-gray-50">
       <UserHeader />
@@ -218,11 +223,10 @@ useEffect(() => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 text-white rounded transition ${
-              loading
+            className={`w-full py-2 text-white rounded transition ${loading
                 ? "bg-blue-400 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700"
-            }`}
+              }`}
           >
             {loading ? "Submitting..." : "Book Now"}
           </button>

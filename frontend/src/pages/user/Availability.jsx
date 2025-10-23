@@ -15,6 +15,7 @@ const Availability = () => {
   }, []);
 
   const handleBook = (host) => {
+ 
     navigate(`/user/book/${host.hostId._id}`);
   };
 
