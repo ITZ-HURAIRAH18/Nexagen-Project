@@ -45,7 +45,7 @@ export const createBooking = async (req, res) => {
   try {
     console.log("📩 Incoming booking request body:", req.body);
 
-    const { hostId, start, end, duration, guest } = req.body;
+    const { hostId, start, end, duration, guest, availabilityId } = req.body; // ✅ include availabilityId
 
     // ✅ Ensure user is authenticated
     if (!req.user || !req.user._id) {
@@ -74,15 +74,16 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ message: "Selected slot is not available" });
     }
 
-    // ✅ Create booking (logged-in user is the creator)
+    // ✅ Create booking with availabilityId
     const booking = await Booking.create({
       hostId,
+      availabilityId, // ✅ save availability reference
       guest,
       start,
       end,
       duration,
       status: "pending",
-      createdByUserId: req.user._id, // ✅ always from logged-in user
+      createdByUserId: req.user._id,
       meetingLink: "",
     });
 

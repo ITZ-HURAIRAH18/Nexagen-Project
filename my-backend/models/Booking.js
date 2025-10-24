@@ -3,6 +3,11 @@ import mongoose from "mongoose";
 const bookingSchema = new mongoose.Schema(
   {
     hostId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+    availabilityId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Availability",   // ✅ link to the Availability collection
+      required: true          // optional, but recommended
+    },
     guest: {
       name: String,
       email: String,

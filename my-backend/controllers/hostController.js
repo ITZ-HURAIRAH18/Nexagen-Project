@@ -54,17 +54,26 @@ export const getHostBookings = async (req, res) => {
   try {
     const hostId = req.user._id || req.user.id;
 
+    // ✅ Find all bookings for this host and populate availability
     const bookings = await Booking.find({ hostId })
-      .populate("guest", "name email")
+      .populate({
+        path: "guest",
+        select: "name email",
+      })
+      .populate({
+        path: "availabilityId",
+        select: "timezone weekly bufferBefore bufferAfter maxPerDay",
+      })
       .sort({ start: 1 })
-      .select("guest start end status notes");
+      .select("guest start end status notes availabilityId");
 
-    res.json({ success: true, bookings });
+    res.status(200).json({ success: true, bookings });
   } catch (error) {
     console.error("Error fetching host bookings:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 // 🕓 Get Host Availability
 export const getMyAvailability = async (req, res) => {

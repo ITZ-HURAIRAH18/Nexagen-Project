@@ -18,7 +18,8 @@ const BookingForm = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [host, setHost] = useState(location.state?.host || null);
-
+  const availabilityId = location.state?.availabilityId; 
+  console.log(availabilityId,"avalaibli")
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -40,11 +41,11 @@ const BookingForm = () => {
   }, []);
 
   useEffect(() => {
-    if (!host) {
+    if (!host) {  
       axiosInstance
         .get("/user/hosts/availability")
         .then((res) => setHost(res.data.availability.find((a) => a.hostId?._id === hostId)))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [hostId]);
 
@@ -73,12 +74,15 @@ const BookingForm = () => {
     try {
       const payload = {
         hostId,
+        availabilityId, 
         start: form.start,
         end: form.end,
         duration: form.duration,
         guest: { name: form.name, email: form.email, phone: form.phone },
         createdByUserId: user.id || user._id,
       };
+      console.log(payload,"payload fron booking..")
+      return
       const { data } = await axiosInstance.post("/user/bookings", payload);
       toast.success(data.message || "Booking created!");
       setTimeout(() => navigate("/user/dashboard"), 1500);
@@ -183,7 +187,20 @@ const BookingForm = () => {
                 required
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Host available: {formatTime(minTime)} - {formatTime(maxTime)}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Host available:{" "}
+                {host.weekly && host.weekly.length > 0 ? (
+                  host.weekly.map((slot, i) => (
+                    <span key={i}>
+                      {formatTime(slot.start)} - {formatTime(slot.end)} {slot.day}
+                      {i !== host.weekly.length - 1 && ", "}
+                    </span>
+                  ))
+                ) : (
+                  "No availability set"
+                )}
+              </p>
+
             </div>
 
             {/* End */}
