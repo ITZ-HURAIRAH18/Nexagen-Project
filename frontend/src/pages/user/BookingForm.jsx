@@ -18,7 +18,10 @@ const BookingForm = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [host, setHost] = useState(location.state?.host || null);
-  const availabilityId = location.state?.availabilityId; 
+  // const availabilityId = location.state?.availabilityId; 
+ 
+const availabilityId = location.state?.availabilityId; 
+
   console.log(availabilityId,"avalaibli")
   const [form, setForm] = useState({
     name: "",
@@ -82,7 +85,7 @@ const BookingForm = () => {
         createdByUserId: user.id || user._id,
       };
       console.log(payload,"payload fron booking..")
-      return
+    
       const { data } = await axiosInstance.post("/user/bookings", payload);
       toast.success(data.message || "Booking created!");
       setTimeout(() => navigate("/user/dashboard"), 1500);

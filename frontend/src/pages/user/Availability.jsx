@@ -24,7 +24,11 @@ const Availability = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleBook = (host) => navigate(`/user/book/${host.hostId._id}`);
+  // const handleBook = (host) => navigate(`/user/book/${host.hostId._id}`);
+const handleBook = (host) =>
+  navigate(`/user/book/${host.hostId._id}`, {
+    state: { host, availabilityId: host._id }, // ✅ pass availability ID here
+  });
 
   const formatTime = (timeStr) => {
     if (!timeStr) return "";

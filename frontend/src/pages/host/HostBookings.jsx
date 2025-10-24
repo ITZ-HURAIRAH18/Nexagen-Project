@@ -10,7 +10,7 @@ const HostBookings = () => {
     axiosInstance.get("/host/bookings")
       .then((res) => {
         if (res.data.success) setBookings(res.data.bookings);
-        console.log(res.data.bookings,"Booking ");
+        console.log(res.data.bookings, "Booking ");
         return
       })
       .catch((err) => console.error("Error fetching bookings:", err));
@@ -120,17 +120,22 @@ const HostBookings = () => {
                   <div className="mt-2">
                     <strong>Weekly Schedule:</strong>
                     <ul className="list-disc ml-6 mt-1 text-gray-700 text-sm">
-                      {selected.availabilityId.weekly.map((w, i) => (
-                        <li key={i}>
-                          {w.day}: {w.start} - {w.end}
-                        </li>
-                      ))}
+                      {selected.availabilityId.weekly && selected.availabilityId.weekly.length > 0 ? (
+                        selected.availabilityId.weekly.map((w, i) => (
+                          <li key={i}>
+                            {w.day}: {w.start} - {w.end}
+                          </li>
+                        ))
+                      ) : (
+                        <li>No weekly schedule found</li>
+                      )}
                     </ul>
                   </div>
                 </div>
               ) : (
                 <p className="text-gray-500 text-sm mt-2">No availability data linked.</p>
               )}
+
             </div>
           </div>
         )}
