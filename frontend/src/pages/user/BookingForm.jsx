@@ -19,10 +19,10 @@ const BookingForm = () => {
   const navigate = useNavigate();
   const [host, setHost] = useState(location.state?.host || null);
   // const availabilityId = location.state?.availabilityId; 
- 
-const availabilityId = location.state?.availabilityId; 
 
-  console.log(availabilityId,"avalaibli")
+  const availabilityId = location.state?.availabilityId;
+
+  console.log(availabilityId, "avalaibli")
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -44,7 +44,7 @@ const availabilityId = location.state?.availabilityId;
   }, []);
 
   useEffect(() => {
-    if (!host) {  
+    if (!host) {
       axiosInstance
         .get("/user/hosts/availability")
         .then((res) => setHost(res.data.availability.find((a) => a.hostId?._id === hostId)))
@@ -77,15 +77,15 @@ const availabilityId = location.state?.availabilityId;
     try {
       const payload = {
         hostId,
-        availabilityId, 
+        availabilityId,
         start: form.start,
         end: form.end,
         duration: form.duration,
         guest: { name: form.name, email: form.email, phone: form.phone },
         createdByUserId: user.id || user._id,
       };
-      console.log(payload,"payload fron booking..")
-    
+      console.log(payload, "payload fron booking..")
+
       const { data } = await axiosInstance.post("/user/bookings", payload);
       toast.success(data.message || "Booking created!");
       setTimeout(() => navigate("/user/dashboard"), 1500);
@@ -191,18 +191,22 @@ const availabilityId = location.state?.availabilityId;
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Host available:{" "}
+                <span className="font-medium text-gray-600">Host Availability:</span>
+                <br />
                 {host.weekly && host.weekly.length > 0 ? (
-                  host.weekly.map((slot, i) => (
-                    <span key={i}>
-                      {formatTime(slot.start)} - {formatTime(slot.end)} {slot.day}
-                      {i !== host.weekly.length - 1 && ", "}
-                    </span>
-                  ))
+                  <ul className="mt-1 space-y-0.5">
+                    {host.weekly.map((slot, i) => (
+                      <li key={i} className="flex justify-between text-gray-600">
+                        <span className="font-semibold w-16">{slot.day}:</span>
+                        <span className="ml-2">{formatTime(slot.start)} - {formatTime(slot.end)}</span>
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
-                  "No availability set"
+                  <span className="italic text-gray-400">No availability set</span>
                 )}
               </p>
+
 
             </div>
 

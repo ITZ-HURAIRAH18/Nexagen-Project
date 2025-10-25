@@ -7,11 +7,11 @@ const HostBookings = () => {
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
-    axiosInstance.get("/host/bookings")
+    axiosInstance
+      .get("/host/bookings")
       .then((res) => {
         if (res.data.success) setBookings(res.data.bookings);
-        console.log(res.data.bookings, "Booking ");
-        return
+        console.log(res.data.bookings, "Bookings");
       })
       .catch((err) => console.error("Error fetching bookings:", err));
   }, []);
@@ -26,6 +26,7 @@ const HostBookings = () => {
           <thead className="bg-gray-200">
             <tr>
               <th className="p-2 border">Guest</th>
+              <th className="p-2 border">Booked By</th>
               <th className="p-2 border">Start</th>
               <th className="p-2 border">End</th>
               <th className="p-2 border">Status</th>
@@ -37,17 +38,31 @@ const HostBookings = () => {
             {bookings.map((b) => (
               <tr key={b._id}>
                 <td className="p-2 border">{b.guest?.name || "N/A"}</td>
-                <td className="p-2 border">{new Date(b.start).toLocaleString()}</td>
-                <td className="p-2 border">{new Date(b.end).toLocaleString()}</td>
+
+                {/* 👇 Created By (User) */}
+                <td className="p-2 border">
+                  {b.createdByUserId
+                    ? `${b.createdByUserId.fullName} (${b.createdByUserId.email})`
+                    : "N/A"}
+                </td>
+
+                <td className="p-2 border">
+                  {new Date(b.start).toLocaleString()}
+                </td>
+                <td className="p-2 border">
+                  {new Date(b.end).toLocaleString()}
+                </td>
+
                 <td className="p-2 border">
                   <select
                     value={b.status}
                     onChange={async (e) => {
                       const newStatus = e.target.value;
                       try {
-                        await axiosInstance.put(`/host/bookings/update-status/${b._id}`, {
-                          status: newStatus,
-                        });
+                        await axiosInstance.put(
+                          `/host/bookings/update-status/${b._id}`,
+                          { status: newStatus }
+                        );
                         setBookings((prev) =>
                           prev.map((bk) =>
                             bk._id === b._id ? { ...bk, status: newStatus } : bk
@@ -83,7 +98,7 @@ const HostBookings = () => {
           </tbody>
         </table>
 
-        {/* Modal */}
+        {/* ✅ Modal */}
         {selected && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg relative">
@@ -94,33 +109,60 @@ const HostBookings = () => {
                 ✕
               </button>
 
-              <h3 className="text-xl font-bold mb-4 text-gray-800">Booking Details</h3>
+              <h3 className="text-xl font-bold mb-4 text-gray-800">
+                Booking Details
+              </h3>
 
-              {/* Booking Info */}
               <div className="space-y-2 text-sm">
-                <p><strong>Guest:</strong> {selected.guest?.name} ({selected.guest?.email})</p>
-                <p><strong>Status:</strong> {selected.status}</p>
-                <p><strong>Start:</strong> {new Date(selected.start).toLocaleString()}</p>
-                <p><strong>End:</strong> {new Date(selected.end).toLocaleString()}</p>
+                <p>
+                  <strong>Guest:</strong> {selected.guest?.fullName} (
+                  {selected.guest?.email})
+                </p>
+                <p>
+                  <strong>Booked By:</strong>{" "}
+                  {selected.createdByUserId
+                    ? `${selected.createdByUserId.fullName} (${selected.createdByUserId.email})`
+                    : "N/A"}
+                </p>
+                <p>
+                  <strong>Status:</strong> {selected.status}
+                </p>
+                <p>
+                  <strong>Start:</strong>{" "}
+                  {new Date(selected.start).toLocaleString()}
+                </p>
+                <p>
+                  <strong>End:</strong>{" "}
+                  {new Date(selected.end).toLocaleString()}
+                </p>
               </div>
 
               <hr className="my-4" />
 
-              {/* Availability Info */}
               {selected.availabilityId ? (
                 <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Availability Info</h4>
-                  <p><strong>Timezone:</strong> {selected.availabilityId.timezone}</p>
+                  <h4 className="font-semibold text-gray-700 mb-2">
+                    Availability Info
+                  </h4>
+                  <p>
+                    <strong>Timezone:</strong>{" "}
+                    {selected.availabilityId.timezone}
+                  </p>
                   <p>
                     <strong>Buffer:</strong>{" "}
-                    {selected.availabilityId.bufferBefore} / {selected.availabilityId.bufferAfter} mins
+                    {selected.availabilityId.bufferBefore} /{" "}
+                    {selected.availabilityId.bufferAfter} mins
                   </p>
-                  <p><strong>Max per day:</strong> {selected.availabilityId.maxPerDay}</p>
+                  <p>
+                    <strong>Max per day:</strong>{" "}
+                    {selected.availabilityId.maxPerDay}
+                  </p>
 
                   <div className="mt-2">
                     <strong>Weekly Schedule:</strong>
                     <ul className="list-disc ml-6 mt-1 text-gray-700 text-sm">
-                      {selected.availabilityId.weekly && selected.availabilityId.weekly.length > 0 ? (
+                      {selected.availabilityId.weekly &&
+                      selected.availabilityId.weekly.length > 0 ? (
                         selected.availabilityId.weekly.map((w, i) => (
                           <li key={i}>
                             {w.day}: {w.start} - {w.end}
@@ -133,9 +175,10 @@ const HostBookings = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm mt-2">No availability data linked.</p>
+                <p className="text-gray-500 text-sm mt-2">
+                  No availability data linked.
+                </p>
               )}
-
             </div>
           </div>
         )}

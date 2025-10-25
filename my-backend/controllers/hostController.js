@@ -54,18 +54,22 @@ export const getHostBookings = async (req, res) => {
   try {
     const hostId = req.user._id || req.user.id;
 
-    // ✅ Find all bookings for this host and populate availability
+    // ✅ Find all bookings for this host and populate both user & availability info
     const bookings = await Booking.find({ hostId })
-      .populate({
-        path: "guest",
+     .populate({
+        path: "guest",   // populate user who created the booking
         select: "name email",
       })
       .populate({
-        path: "availabilityId",
+        path: "createdByUserId",   // populate user who created the booking
+        select: "fullName email",
+      })
+      .populate({
+        path: "availabilityId",    // populate availability data
         select: "timezone weekly bufferBefore bufferAfter maxPerDay",
       })
       .sort({ start: 1 })
-      .select("guest start end status notes availabilityId");
+      .select("createdByUserId start end status meetingLink availabilityId");
 
     res.status(200).json({ success: true, bookings });
   } catch (error) {
