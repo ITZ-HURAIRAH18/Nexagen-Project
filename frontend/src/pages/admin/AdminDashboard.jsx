@@ -28,16 +28,14 @@ const AdminDashboard = () => {
     fetchDashboard();
 
     // ✅ Listen for booking updates
-    socket.on("booking_created", ({ totalBookings }) => {
-      if (!isMounted) return;
-      setData(prev => ({ ...prev, totalBookings })); // merge
-    });
+   socket.on("dashboard_updated", updatedData => {
+    setData(updatedData); // replace the entire dashboard data
+  });
 
     return () => {
-      isMounted = false;
-      socket.off("booking_created"); // remove listener
-    };
-  }, []);
+    socket.off("dashboard_updated");
+  };
+}, []);
 
   return (
     <div className="min-h-screen bg-gray-100">

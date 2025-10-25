@@ -2,9 +2,9 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
-
+import Booking from "../models/Booking.js";
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
+import { io } from "../server.js";
 const generateToken = (user) =>
   jwt.sign(
     {
@@ -32,7 +32,15 @@ export const signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await User.create({ fullName, email, password: hashedPassword, role });
+    const totalUsers = await User.countDocuments();
+    const totalBookings = await Booking.countDocuments();
+    const recentUsers = await User.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("fullName email role");
 
+    // ✅ Emit full dashboard update
+    io.emit("dashboard_updated", { totalUsers, totalBookings, recentUsers });
     res.json({
       success: true,
       message: "Signup successful. Please login now.",
@@ -96,7 +104,15 @@ export const googleSignup = async (req, res) => {
       isGoogleAccount: true,
       role: allowedRole,
     });
+    const totalUsers = await User.countDocuments();
+    const totalBookings = await Booking.countDocuments();
+    const recentUsers = await User.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("fullName email role");
 
+    // ✅ Emit full dashboard update
+    io.emit("dashboard_updated", { totalUsers, totalBookings, recentUsers });
     res.json({
       success: true,
       message: "Signup successful. Please login with Google.",

@@ -95,8 +95,13 @@ export const createBooking = async (req, res) => {
     });
 
     console.log("✅ Booking created successfully:", booking);
+    const totalUsers = await User.countDocuments();
     const totalBookings = await Booking.countDocuments();
-    io.emit("booking_created", { totalBookings });
+    const recentUsers = await User.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("fullName email role");
+    io.emit("dashboard_updated", { totalUsers, totalBookings, recentUsers });
     res.status(201).json({
       message: "Booking request submitted successfully",
       booking,

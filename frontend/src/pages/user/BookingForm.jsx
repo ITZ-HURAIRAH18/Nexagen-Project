@@ -52,14 +52,19 @@ const BookingForm = () => {
     }
   }, [hostId]);
 
-  useEffect(() => {
-    if (form.start && form.duration) {
-      const start = new Date(form.start);
-      const end = new Date(start.getTime() + form.duration * 60000);
-      const offset = end.getTimezoneOffset();
-      setForm((p) => ({ ...p, end: new Date(end.getTime() - offset * 60000).toISOString().slice(0, 16) }));
-    }
-  }, [form.start, form.duration]);
+useEffect(() => {
+  if (form.start && form.duration) {
+    const start = new Date(form.start);
+    const end = new Date(start.getTime() + form.duration * 60000);
+    const offset = end.getTimezoneOffset();
+    setForm((p) => ({
+      ...p,
+      end: new Date(end.getTime() - offset * 60000)
+        .toISOString()
+        .slice(0, 16),
+    }));
+  }
+}, [form.start, form.duration]);
 
   /* ---------- helpers ---------- */
   const formatTime = (t) => {
@@ -185,7 +190,7 @@ const BookingForm = () => {
               <input
                 type="datetime-local"
                 value={form.start}
-                min={new Date().toISOString().slice(0, 16)}
+                // min={new Date().toISOString().slice(0, 16)}
                 onChange={(e) => setForm({ ...form, start: e.target.value })}
                 required
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"

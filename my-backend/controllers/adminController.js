@@ -94,7 +94,8 @@ export const getDashboard = async (req, res) => {
     const totalUsers = await User.countDocuments();
     const totalBookings = await Booking.countDocuments();
     const recentUsers = await User.find().sort({ createdAt: -1 }).limit(5).select("fullName email role");
-
+//  const totalBookings = await Booking.countDocuments();
+      //  io.emit("dashboard_updated", { totalUsers, totalBookings, recentUsers });
     res.json({
       totalUsers,
       totalBookings,
