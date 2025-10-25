@@ -1,16 +1,16 @@
 import Booking from "../models/Booking.js";
 import Availability from "../models/Availability.js";
 import User from "../models/User.js";
-
+import { io } from "../server.js";
 // 1️⃣ Get all bookings created by the currently logged-in user
 export const getUserBookings = async (req, res) => {
   try {
     // 🧩 Ensure the user is authenticated
     if (!req.user || !req.user._id) {
-      return res.status(401).json({ message: "Unauthorized. Please log in again." });
+      return res
+        .status(401)
+        .json({ message: "Unauthorized. Please log in again." });
     }
-
-   
 
     // ✅ Find all bookings created by the logged-in user
     const bookings = await Booking.find({ createdByUserId: req.user._id })
@@ -32,7 +32,10 @@ export const getUserBookings = async (req, res) => {
 // 2️⃣ Get all hosts availability for user to pick slot
 export const getAllHostsAvailability = async (req, res) => {
   try {
-    const availability = await Availability.find().populate("hostId", "fullName email");
+    const availability = await Availability.find().populate(
+      "hostId",
+      "fullName email"
+    );
     res.json({ availability });
   } catch (err) {
     console.error("❌ Error fetching availability:", err);
@@ -49,7 +52,9 @@ export const createBooking = async (req, res) => {
 
     // ✅ Ensure user is authenticated
     if (!req.user || !req.user._id) {
-      return res.status(401).json({ message: "Unauthorized. Please log in again." });
+      return res
+        .status(401)
+        .json({ message: "Unauthorized. Please log in again." });
     }
 
     // ✅ Validation
@@ -58,20 +63,22 @@ export const createBooking = async (req, res) => {
     }
 
     if (new Date(start) >= new Date(end)) {
-      return res.status(400).json({ message: "Start time must be before end time" });
+      return res
+        .status(400)
+        .json({ message: "Start time must be before end time" });
     }
 
     // ✅ Check for overlapping bookings for the same host
     const overlapping = await Booking.findOne({
       hostId,
       status: { $in: ["pending", "confirmed"] },
-      $or: [
-        { start: { $lt: new Date(end) }, end: { $gt: new Date(start) } },
-      ],
+      $or: [{ start: { $lt: new Date(end) }, end: { $gt: new Date(start) } }],
     });
 
     if (overlapping) {
-      return res.status(400).json({ message: "Selected slot is not available" });
+      return res
+        .status(400)
+        .json({ message: "Selected slot is not available" });
     }
 
     // ✅ Create booking with availabilityId
@@ -88,7 +95,8 @@ export const createBooking = async (req, res) => {
     });
 
     console.log("✅ Booking created successfully:", booking);
-
+    const totalBookings = await Booking.countDocuments();
+    io.emit("booking_created", { totalBookings });
     res.status(201).json({
       message: "Booking request submitted successfully",
       booking,

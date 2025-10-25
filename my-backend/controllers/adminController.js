@@ -1,6 +1,7 @@
 // controllers/adminController.js
 import User from "../models/User.js";       // Your User model
 import Booking from "../models/Booking.js"; // Your Booking model
+import { io } from "../server.js";
 
 // Get all users
 export const getAllUsers = async (req, res) => {
@@ -26,7 +27,19 @@ export const suspendUser = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+export const unsuspendUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
+    user.suspended = false; // example field
+    await user.save();
+
+    res.json({ message: "User suspended successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 // Delete a user
 export const deleteUser = async (req, res) => {
   try {

@@ -38,6 +38,11 @@ const AdminUsers = () => {
     await axiosInstance.patch(`/admin/user/${id}/suspend`);
     fetchUsers(filteredRole);
   };
+  const handleUnSuspend = async (id) => {
+    if (!window.confirm("Unsuspend this user?")) return;
+    await axiosInstance.patch(`/admin/user/${id}/unsuspend`);
+    fetchUsers(filteredRole);
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this user?")) return;
@@ -141,6 +146,14 @@ const AdminUsers = () => {
                           className="inline-flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded transition"
                         >
                           <Ban size={14} /> Suspend
+                        </button>
+                      )}
+                       {user.suspended && (
+                        <button
+                          onClick={() => handleUnSuspend(user._id)}
+                          className="inline-flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded transition"
+                        >
+                          <Ban size={14} /> UnSuspend
                         </button>
                       )}
                       <button

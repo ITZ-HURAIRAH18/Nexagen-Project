@@ -7,7 +7,8 @@ import {
   suspendUser,
   deleteUser,
   getStats,
-   getDashboard
+   getDashboard,
+   unsuspendUser
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -17,6 +18,7 @@ router.get("/users", verifyToken, isAdmin, getAllUsers);
 
 // PATCH: suspend user
 router.patch("/user/:id/suspend", verifyToken, isAdmin, suspendUser);
+router.patch("/user/:id/unsuspend", verifyToken, isAdmin, unsuspendUser);
 
 // DELETE user
 router.delete("/user/:id", verifyToken, isAdmin, deleteUser);
