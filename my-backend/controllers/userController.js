@@ -2,6 +2,10 @@ import Booking from "../models/Booking.js";
 import Availability from "../models/Availability.js";
 import User from "../models/User.js";
 import { io } from "../server.js";
+import { emitHostDashboardUpdate } from "./hostController.js";
+
+
+
 // 1️⃣ Get all bookings created by the currently logged-in user
 export const getUserBookings = async (req, res) => {
   try {
@@ -102,6 +106,7 @@ export const createBooking = async (req, res) => {
       .limit(5)
       .select("fullName email role");
     io.emit("dashboard_updated", { totalUsers, totalBookings, recentUsers });
+     emitHostDashboardUpdate(hostId);
     res.status(201).json({
       message: "Booking request submitted successfully",
       booking,

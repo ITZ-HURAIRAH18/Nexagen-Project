@@ -2,19 +2,27 @@ import mongoose from "mongoose"; // ✅ add this line
 import Availability from "../models/Availability.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
-
-
+import { io } from "../server.js";
 // 📊 Dashboard Overview
 export const getHostDashboard = async (req, res) => {
   try {
-     const hostId = req.user._id || req.user.id;
+    const hostId = req.user._id || req.user.id;
 
     const totalBookings = await Booking.countDocuments({ hostId });
+    const now = new Date();
+
     const upcomingBookings = await Booking.countDocuments({
       hostId,
-      start: { $gte: new Date() },
       status: "confirmed",
+      start: { $gte: now }, // only future bookings
     });
+
+    const pastBookings = await Booking.countDocuments({
+      hostId,
+      status: "confirmed",
+      start: { $lt: now }, // already happened
+    });
+
     const pendingBookings = await Booking.countDocuments({
       hostId,
       status: "pending",
@@ -39,6 +47,7 @@ export const getHostDashboard = async (req, res) => {
         upcomingBookings,
         pendingBookings,
         cancelledBookings,
+        pastBookings, // optional, if you want to show past confirmed
       },
       availability,
       recentBookings,
@@ -49,6 +58,54 @@ export const getHostDashboard = async (req, res) => {
   }
 };
 
+export const emitHostDashboardUpdate = async (hostId) => {
+  console.log("Emitting dashboard update for host:", hostId);
+  try {
+    const now = new Date();
+
+    const totalBookings = await Booking.countDocuments({ hostId });
+    const upcomingBookings = await Booking.countDocuments({
+      hostId,
+      status: "confirmed",
+      start: { $gte: now },
+    });
+    const pastBookings = await Booking.countDocuments({
+      hostId,
+      status: "confirmed",
+      start: { $lt: now },
+    });
+    const pendingBookings = await Booking.countDocuments({
+      hostId,
+      status: "pending",
+    });
+    const cancelledBookings = await Booking.countDocuments({
+      hostId,
+      status: "cancelled",
+    });
+
+    const recentBookings = await Booking.find({ hostId })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("guest start end status duration createdAt");
+
+    const availability = await Availability.findOne({ hostId });
+
+    io.to(hostId.toString()).emit("host_dashboard_updated", {
+      stats: {
+        totalBookings,
+        upcomingBookings,
+        pendingBookings,
+        cancelledBookings,
+        pastBookings,
+      },
+      recentBookings,
+      availability,
+    });
+  } catch (err) {
+    console.error("Error emitting host dashboard update:", err);
+  }
+};
+
 // 📅 All Bookings for this Host
 export const getHostBookings = async (req, res) => {
   try {
@@ -56,16 +113,16 @@ export const getHostBookings = async (req, res) => {
 
     // ✅ Find all bookings for this host and populate both user & availability info
     const bookings = await Booking.find({ hostId })
-     .populate({
-        path: "guest",   // populate user who created the booking
+      .populate({
+        path: "guest", // populate user who created the booking
         select: "name email",
       })
       .populate({
-        path: "createdByUserId",   // populate user who created the booking
+        path: "createdByUserId", // populate user who created the booking
         select: "fullName email",
       })
       .populate({
-        path: "availabilityId",    // populate availability data
+        path: "availabilityId", // populate availability data
         select: "timezone weekly bufferBefore bufferAfter maxPerDay",
       })
       .sort({ start: 1 })
@@ -78,15 +135,17 @@ export const getHostBookings = async (req, res) => {
   }
 };
 
-
 // 🕓 Get Host Availability
 export const getMyAvailability = async (req, res) => {
   try {
     // ✅ Prefer token ID, but fallback to body or query if needed
-    const hostId = req.user?._id || req.user?.id || req.body.hostId || req.query.hostId;
+    const hostId =
+      req.user?._id || req.user?.id || req.body.hostId || req.query.hostId;
 
     if (!hostId) {
-      return res.status(400).json({ success: false, message: "Host ID missing" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Host ID missing" });
     }
 
     // ✅ Fetch availability for this host
@@ -106,7 +165,6 @@ export const getMyAvailability = async (req, res) => {
   }
 };
 
-
 // ➕ Add New Availability
 export const addAvailability = async (req, res) => {
   try {
@@ -114,7 +172,9 @@ export const addAvailability = async (req, res) => {
     const hostId = req.user?._id || req.user?.id || req.body.hostId;
 
     if (!hostId) {
-      return res.status(400).json({ success: false, message: "Host ID missing" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Host ID missing" });
     }
 
     const {
@@ -145,12 +205,12 @@ export const addAvailability = async (req, res) => {
   }
 };
 
-
 // ✏️ Update Availability by ID
 export const updateAvailabilityById = async (req, res) => {
   try {
     const { id } = req.params; // get availability _id
-    const hostId = req.user?._id || req.user?.id || req.body.hostId || req.query.hostId;
+    const hostId =
+      req.user?._id || req.user?.id || req.body.hostId || req.query.hostId;
 
     const {
       weekly,
@@ -164,12 +224,23 @@ export const updateAvailabilityById = async (req, res) => {
 
     const updated = await Availability.findOneAndUpdate(
       { _id: id, hostId }, // ensure host owns this availability
-      { weekly, bufferBefore, bufferAfter, durations, maxPerDay, blockedDates, timezone },
+      {
+        weekly,
+        bufferBefore,
+        bufferAfter,
+        durations,
+        maxPerDay,
+        blockedDates,
+        timezone,
+      },
       { new: true }
     );
 
     if (!updated) {
-      return res.status(404).json({ success: false, message: "Availability not found or not authorized." });
+      return res.status(404).json({
+        success: false,
+        message: "Availability not found or not authorized.",
+      });
     }
 
     res.json({ success: true, availability: updated });
@@ -183,18 +254,25 @@ export const updateAvailabilityById = async (req, res) => {
 export const deleteAvailabilityById = async (req, res) => {
   try {
     const { id } = req.params; // get availability _id
-   const hostId = req.user?._id || req.user?.id || req.body.hostId || req.query.hostId;
+    const hostId =
+      req.user?._id || req.user?.id || req.body.hostId || req.query.hostId;
 
     const deleted = await Availability.findOneAndDelete({ _id: id, hostId });
 
     if (!deleted) {
-      return res.status(404).json({ success: false, message: "Availability not found or not authorized." });
+      return res.status(404).json({
+        success: false,
+        message: "Availability not found or not authorized.",
+      });
     }
 
     res.json({ success: true, message: "Availability deleted successfully." });
   } catch (error) {
     console.error("Error deleting availability:", error);
-    res.status(500).json({ success: false, message: "Server error while deleting availability." });
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting availability.",
+    });
   }
 };
 
@@ -222,7 +300,8 @@ export const getAvailabilityById = async (req, res) => {
   try {
     const { id } = req.params;
     const availability = await Availability.findById(id); // assuming Mongoose model Availability
-    if (!availability) return res.status(404).json({ message: "Availability not found" });
+    if (!availability)
+      return res.status(404).json({ message: "Availability not found" });
     res.json(availability);
   } catch (error) {
     console.error(error);
@@ -230,8 +309,7 @@ export const getAvailabilityById = async (req, res) => {
   }
 };
 
-
-import axios from "axios";
+// import axios from "axios";
 
 // export const updateBookingStatus = async (req, res) => {
 //   const bookingId = req.params.id;
@@ -271,17 +349,19 @@ import axios from "axios";
 //       const startWithBuffer = new Date(startTime.getTime() - bufferBefore * 60000);
 //       const endWithBuffer = new Date(endTime.getTime() + bufferAfter * 60000);
 
-//       // 🔗 Create Daily room via API
+//       // ✅ Create Daily room (Free plan–safe)
 //       const response = await axios.post(
 //         "https://api.daily.co/v1/rooms",
 //         {
 //           name: `booking-${booking._id}`,
 //           properties: {
-//             exp: Math.floor(endWithBuffer.getTime() / 1000), // auto-expire after buffer end
+//             max_participants: 15, // ✅ Allow up to 15 participants
+//             enable_screenshare: true,
 //             start_audio_off: true,
 //             start_video_off: true,
-//             enable_screenshare: true,
-//             nbf: Math.floor(startWithBuffer.getTime() / 1000), // not before buffer start
+//             // 🟡 Optional: comment these out if you still see "add a card"
+//             exp: Math.floor(endWithBuffer.getTime() / 1000),
+//             nbf: Math.floor(startWithBuffer.getTime() / 1000),
 //           },
 //         },
 //         {
@@ -309,8 +389,6 @@ import axios from "axios";
 //     res.status(500).json({ message: "Server error" });
 //   }
 // };
-
-
 export const updateBookingStatus = async (req, res) => {
   const bookingId = req.params.id;
   const { status } = req.body;
@@ -334,58 +412,12 @@ export const updateBookingStatus = async (req, res) => {
     }
 
     booking.status = status;
-
-    // 🟢 If confirmed → create Daily meeting
-    if (status === "confirmed") {
-      // get host's availability to know buffer time
-      const availability = await Availability.findOne({ hostId: booking.hostId });
-      const bufferBefore = availability?.bufferBefore || 0;
-      const bufferAfter = availability?.bufferAfter || 0;
-
-      const startTime = new Date(booking.start);
-      const endTime = new Date(booking.end);
-
-      // 🕒 Adjust window for allowed access
-      const startWithBuffer = new Date(startTime.getTime() - bufferBefore * 60000);
-      const endWithBuffer = new Date(endTime.getTime() + bufferAfter * 60000);
-
-      // ✅ Create Daily room (Free plan–safe)
-      const response = await axios.post(
-        "https://api.daily.co/v1/rooms",
-        {
-          name: `booking-${booking._id}`,
-          properties: {
-            max_participants: 15, // ✅ Allow up to 15 participants
-            enable_screenshare: true,
-            start_audio_off: true,
-            start_video_off: true,
-            // 🟡 Optional: comment these out if you still see "add a card"
-            exp: Math.floor(endWithBuffer.getTime() / 1000),
-            nbf: Math.floor(startWithBuffer.getTime() / 1000),
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.DAILY_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      booking.meetingLink = response.data.url;
-    }
-
     await booking.save();
+    await emitHostDashboardUpdate(booking.hostId);
 
-    res.json({
-      message:
-        status === "confirmed"
-          ? "Booking confirmed and meeting link generated."
-          : "Booking status updated successfully.",
-      booking,
-    });
+    res.json({ message: "Booking status updated successfully", booking });
   } catch (err) {
-    console.error("Error updating booking status:", err.response?.data || err);
+    console.error("Error updating booking status:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
