@@ -3,10 +3,10 @@ import mongoose from "mongoose";
 const bookingSchema = new mongoose.Schema(
   {
     hostId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
-    availabilityId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "Availability",   // ✅ link to the Availability collection
-      required: true          // optional, but recommended
+    availabilityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Availability", // ✅ link to the Availability collection
+      required: true, // optional, but recommended
     },
     guest: {
       name: String,
@@ -21,8 +21,12 @@ const bookingSchema = new mongoose.Schema(
       enum: ["confirmed", "cancelled", "rescheduled", "pending"],
       default: "pending",
     },
-    createdByUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
-    meetingLink: String,
+    createdByUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+     meetingRoom: String, // ✅ renamed from meetingLink
     notes: {
       hostNote: String,
       guestNote: String,

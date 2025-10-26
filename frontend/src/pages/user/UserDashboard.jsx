@@ -11,23 +11,26 @@ import {
   ExclamationCircleIcon,
   UserCircleIcon
 } from "@heroicons/react/24/outline";
+import { useNavigate } from "react-router-dom";
+
 /* ---------- global helpers ---------- */
 const formatDate = (d) =>
   new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(d));
 
 const formatTime = (d) =>
   new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(d));
-  /* ---------- render ---------- */
+/* ---------- render ---------- */
 const UserDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     axiosInstance
       .get("/user/bookings")
       .then((res) => setBookings(res.data.bookings || []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
@@ -74,6 +77,7 @@ const UserDashboard = () => {
                   statusIcon={statusIcon}
                   formatDate={formatDate}
                   formatTime={formatTime}
+                  navigate={navigate}
                 />
               ))}
             </div>
@@ -102,8 +106,8 @@ const EmptyState = () => (
   </div>
 );
 
-const BookingCard = ({ booking, onClick, statusStyles, statusIcon, formatDate, formatTime }) => {
-  const { hostId, start, end, status, meetingLink } = booking;
+const BookingCard = ({ booking, onClick, statusStyles, statusIcon, formatDate, formatTime, navigate }) => {
+  const { hostId, start, end, status, meetingRoom } = booking;
   const hostName = hostId?.fullName || "Unknown Host";
 
   return (
@@ -131,25 +135,28 @@ const BookingCard = ({ booking, onClick, statusStyles, statusIcon, formatDate, f
       </div>
 
       <div className="mt-4 flex items-center justify-between">
-        {meetingLink ? (
-          <a
-            href={meetingLink}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
+        {meetingRoom ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/meeting/${booking.meetingRoom}`);
+            }}
             className="inline-flex items-center gap-2 text-blue-200 hover:text-white underline"
           >
             <VideoCameraIcon className="w-4 h-4" />
             Join
-          </a>
+          </button>
+
         ) : (
           <span className="text-xs opacity-75">No link yet</span>
         )}
+
         <span className="text-xs opacity-75">Click for details</span>
       </div>
     </div>
   );
 };
+
 
 const Row = ({ icon, label, value }) => (
   <div className="flex items-center gap-2">

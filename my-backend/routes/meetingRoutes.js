@@ -1,10 +1,10 @@
-
+// routes/meetingRoutes.js
 import express from "express";
+import { getMeetingByRoomId } from "../controllers/meetingController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
-import { getMeetingById } from "../controllers/meetingController.js";
 
 const router = express.Router();
 
-router.get("/:id", verifyToken, getMeetingById);
+router.get("/:roomId", getMeetingByRoomId);
 
 export default router;

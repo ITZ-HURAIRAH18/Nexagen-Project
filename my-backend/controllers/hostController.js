@@ -3,6 +3,10 @@ import Availability from "../models/Availability.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import { io } from "../server.js";
+import { v4 as uuidv4 } from "uuid";
+
+
+
 // 📊 Dashboard Overview
 export const getHostDashboard = async (req, res) => {
   try {
@@ -105,7 +109,6 @@ export const emitHostDashboardUpdate = async (hostId) => {
     console.error("Error emitting host dashboard update:", err);
   }
 };
-
 // 📅 All Bookings for this Host
 export const getHostBookings = async (req, res) => {
   try {
@@ -389,6 +392,45 @@ export const getAvailabilityById = async (req, res) => {
 //     res.status(500).json({ message: "Server error" });
 //   }
 // };
+
+// export const updateBookingStatus = async (req, res) => {
+//   const bookingId = req.params.id;
+//   const { status } = req.body;
+
+//   const allowedStatuses = ["confirmed", "cancelled", "rescheduled", "pending"];
+//   if (!allowedStatuses.includes(status)) {
+//     return res.status(400).json({ message: "Invalid status value" });
+//   }
+
+//   if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+//     return res.status(400).json({ message: "Invalid booking ID" });
+//   }
+
+//   try {
+//     const booking = await Booking.findById(bookingId);
+//     if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+//     // Ensure host owns this booking
+//     if (!req.user || booking.hostId.toString() !== req.user._id.toString()) {
+//       return res.status(403).json({ message: "Not authorized" });
+//     }
+
+//     booking.status = status;
+//     await booking.save();
+//     await emitHostDashboardUpdate(booking.hostId);
+
+//     res.json({ message: "Booking status updated successfully", booking });
+//   } catch (err) {
+//     console.error("Error updating booking status:", err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+// controllers/bookingController.js
+
+
+
+
 export const updateBookingStatus = async (req, res) => {
   const bookingId = req.params.id;
   const { status } = req.body;
@@ -404,20 +446,42 @@ export const updateBookingStatus = async (req, res) => {
 
   try {
     const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
 
-    // Ensure host owns this booking
+    // ✅ Only host can confirm/cancel
     if (!req.user || booking.hostId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
     booking.status = status;
+
+    // ✅ Generate unique meeting room ID if confirmed
+    if (status === "confirmed" && !booking.meetingRoom) {
+      booking.meetingRoom = uuidv4();
+    }
+
     await booking.save();
+
+    // ✅ Emit real-time update to clients
+    io.emit("booking_status_updated", {
+      bookingId,
+      status,
+      meetingRoom: booking.meetingRoom,
+    });
+
+    // ✅ Update host dashboard
     await emitHostDashboardUpdate(booking.hostId);
 
-    res.json({ message: "Booking status updated successfully", booking });
+    res.json({
+      message: "Booking status updated successfully",
+      booking,
+      meetingLink: booking.meetingRoom ? `/meeting/${booking.meetingRoom}` : null,
+    });
   } catch (err) {
     console.error("Error updating booking status:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
