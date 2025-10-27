@@ -1,68 +1,121 @@
+// src/pages/admin/AdminStats.jsx
 import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axiosInstance";
 import AdminHeader from "../../components/adminHeader";
-
+import {
+  CalendarDaysIcon,
+  UserGroupIcon,
+  TrophyIcon,
+} from "@heroicons/react/24/outline";
 
 const AdminStats = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [totalHosts, setTotalHosts] = useState(0);
   const fetchStats = async () => {
+    setLoading(true);
     try {
-      const res = await axiosInstance.get("/admin/stats");
-      setStats(res.data);
-    } catch (err) {
-      console.error("Error fetching stats:", err);
+      const [statsRes, usersRes] = await Promise.all([
+        axiosInstance.get("/admin/stats"),
+        axiosInstance.get("/admin/users"),          // ← pull users
+      ]);
+      setStats(statsRes.data);
+
+      // count hosts
+      const hosts = usersRes.data.filter((u) => u.role === "host");
+      setTotalHosts(hosts.length);
+    } catch {
+      setStats(null);
+      setTotalHosts(0);
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchStats();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading)
+    return (
+      <>
+        <AdminHeader />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center text-blue-600">Loading…</div>
+      </>
+    );
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <>
       <AdminHeader />
-      <div className="container mx-auto p-6">
-        <h2 className="text-2xl font-bold mb-6">Admin Stats</h2>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white p-4 sm:p-6">
+        <div className="max-w-7xl mx-auto">
+          <header className="mb-8 text-center">
+            <h1 className="text-3xl font-extrabold text-blue-900">Admin Statistics</h1>
+            <p className="text-blue-700 mt-1">Key metrics at a glance</p>
+          </header>
 
-        {stats ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Total Bookings */}
-            <div className="bg-white p-6 rounded shadow flex flex-col items-center">
-              <h3 className="text-gray-700 font-semibold mb-2">Total Bookings</h3>
-              <p className="text-3xl font-bold">{stats.totalBookings}</p>
+          {!stats ? (
+            <div className="text-center text-blue-600">No stats available.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Total Bookings */}
+              <MetricCard
+                label="Total Bookings"
+                value={stats.totalBookings}
+                icon={<CalendarDaysIcon className="w-7 h-7" />}
+                gradient="from-blue-50 to-blue-100"
+                text="text-blue-700"
+              />
+
+              {/* Active Hosts */}
+              {/* Total Hosts */}
+              <MetricCard
+                label="Total Hosts"
+                value={totalHosts}
+                icon={<UserGroupIcon className="w-7 h-7" />}
+                gradient="from-cyan-50 to-cyan-100"
+                text="text-cyan-700"
+              />
+
+              {/* Top Hosts */}
+              <div className={`bg-white rounded-2xl shadow-lg border border-blue-100 p-6 bg-gradient-to-br from-sky-50 to-sky-100 text-sky-700`}>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-sky-200/60 flex items-center justify-center">
+                    <TrophyIcon className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-lg font-semibold">Top Hosts</h3>
+                </div>
+                <ul className="space-y-2">
+                  {stats.topHosts?.length ? (
+                    stats.topHosts.map((host, idx) => (
+                      <li key={host._id} className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{host.fullName}</span>
+                        <span className="px-2.5 py-1 rounded-full bg-sky-200 text-sky-800 text-xs font-medium">
+                          {host.totalBookings} bookings
+                        </span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-sm text-sky-600">No data</li>
+                  )}
+                </ul>
+              </div>
             </div>
-
-            {/* Active Hosts */}
-            <div className="bg-white p-6 rounded shadow flex flex-col items-center">
-              <h3 className="text-gray-700 font-semibold mb-2">Active Hosts</h3>
-              <p className="text-3xl font-bold">{stats.activeHosts}</p>
-            </div>
-
-            {/* Top Hosts */}
-            <div className="bg-white p-6 rounded shadow">
-              <h3 className="text-gray-700 font-semibold mb-2">Top Hosts</h3>
-              <ul className="list-disc pl-5">
-                {stats.topHosts?.map((host) => (
-                  <li key={host._id}>
-                    {host.fullName} — {host.totalBookings} bookings
-                  </li>
-                ))}
-
-              </ul>
-            </div>
-          </div>
-        ) : (
-          <p>No stats available.</p>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
+
+/* ---------- sub-components ---------- */
+const MetricCard = ({ label, value, icon, gradient, text }) => (
+  <div className={`bg-white rounded-2xl shadow-lg border border-blue-100 p-6 flex items-center gap-5 bg-gradient-to-br ${gradient} ${text}`}>
+    <div className="w-12 h-12 rounded-xl bg-white/60 flex items-center justify-center">{icon}</div>
+    <div>
+      <p className="text-sm opacity-80">{label}</p>
+      <p className="text-3xl font-bold">{value}</p>
+    </div>
+  </div>
+);
 
 export default AdminStats;
