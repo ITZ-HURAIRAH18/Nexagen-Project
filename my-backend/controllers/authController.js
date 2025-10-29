@@ -4,7 +4,10 @@ import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
 import sendEmail from "../utils/nodemail.js";
-import {userWelcomeTemplate,adminNewUserTemplate} from "../emails/templates.js";
+import {
+  userWelcomeTemplate,
+  adminNewUserTemplate,
+} from "../emails/templates.js";
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 import { io } from "../server.js";
 const generateToken = (user) =>
@@ -33,7 +36,13 @@ export const signup = async (req, res) => {
         .json({ message: "Email already registered. Please login." });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    await User.create({ fullName, email, password: hashedPassword, role });
+    // await User.create({ fullName, email, password: hashedPassword, role });
+    const newUser = await User.create({
+      fullName,
+      email,
+      password: hashedPassword,
+      role,
+    });
     const totalUsers = await User.countDocuments();
     const totalBookings = await Booking.countDocuments();
     const recentUsers = await User.find()
@@ -47,11 +56,21 @@ export const signup = async (req, res) => {
       success: true,
       message: "Signup successful. Please login now.",
     });
+
+    // Send welcome email to user ONLY
     await sendEmail(
-      User._id,
-      "🎉 Welcome to FundHub!",
-      userWelcomeTemplate(User),
-      true
+      newUser._id,
+      "🎉 Welcome to Schedulr Ease!",
+      userWelcomeTemplate(newUser),
+      false // ❌ don't send to admin
+    );
+
+    // Send new user alert to admin ONLY
+    await sendEmail(
+      newUser._id,
+      "👤 New User Registered on Schedulr Ease",
+      adminNewUserTemplate(newUser),
+      true // ✅ send only to admin
     );
   } catch (err) {
     res.status(500).json({ message: err.message });
