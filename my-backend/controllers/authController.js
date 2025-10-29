@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
+import sendEmail from "../utils/nodemail.js";
+import {userWelcomeTemplate,adminNewUserTemplate} from "../emails/templates.js";
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 import { io } from "../server.js";
 const generateToken = (user) =>
@@ -45,6 +47,12 @@ export const signup = async (req, res) => {
       success: true,
       message: "Signup successful. Please login now.",
     });
+    await sendEmail(
+      User._id,
+      "🎉 Welcome to FundHub!",
+      userWelcomeTemplate(User),
+      true
+    );
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

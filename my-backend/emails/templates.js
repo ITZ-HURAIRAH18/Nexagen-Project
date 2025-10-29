@@ -1,5 +1,7 @@
 // emails/templates.js
 
+// emails/templates.js
+
 export const userWelcomeTemplate = (user) => `
 <!doctype html>
 <html>
@@ -9,16 +11,13 @@ export const userWelcomeTemplate = (user) => `
     <title>Welcome to FundHub</title>
   </head>
   <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-    
-    <!-- Main Container -->
     <table role="presentation" style="width:100%;padding:20px 10px;">
       <tr>
         <td align="center">
           <table role="presentation" style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,0.08);">
             <tr>
               <td>
-                
-                <!-- Header -->
+                <!-- Header Section -->
                 <div style="background:#111827;padding:40px 20px;text-align:center;">
                   <div style="background:#ffffff;width:70px;height:70px;margin:0 auto 20px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,0.15);">
                     <span style="font-size:36px;line-height:1;">🎯</span>
@@ -27,105 +26,48 @@ export const userWelcomeTemplate = (user) => `
                   <p style="margin:8px 0 0;color:#e5e7eb;font-size:16px;">We’re excited to have you on board</p>
                 </div>
 
-                <!-- Main Content -->
+                <!-- Main Body -->
                 <div style="padding:35px 25px;">
-                  
-                  <!-- Greeting -->
                   <h2 style="margin:0 0 12px;color:#111827;font-size:20px;font-weight:700;">
-                    Hi ${user.name} 👋
+                    Hi ${user.fullName} 👋
                   </h2>
                   <p style="margin:0 0 25px;color:#4b5563;font-size:15px;line-height:1.6;">
-                    You’ve joined <strong style="color:#111827;">FundHub</strong> — a platform to create, support, and track campaigns that matter. Let’s get started on this journey together!
+                    You’ve joined <strong style="color:#111827;">FundHub</strong> — a platform to create, support, and track campaigns that truly make a difference. 
+                    We're thrilled to have you with us!
                   </p>
 
-                  <!-- Account Details -->
-                  <div style="background:#f9fafb;border-radius:8px;padding:20px;border:1px solid #e5e7eb;margin-bottom:30px;">
-                    <h3 style="margin:0 0 15px;color:#374151;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
-                      📋 Your Account Details
-                    </h3>
-                    <table role="presentation" style="width:100%;border-collapse:collapse;">
-                      <tr>
-                        <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;">
-                          <span style="color:#6b7280;font-size:13px;font-weight:600;">Email Address</span>
-                        </td>
-                        <td style="padding:8px 0;border-bottom:1px solid #e5e7eb;text-align:right;">
-                          <span style="color:#111827;font-size:14px;font-weight:600;">${user.email}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding:8px 0;">
-                          <span style="color:#6b7280;font-size:13px;font-weight:600;">Member Since</span>
-                        </td>
-                        <td style="padding:8px 0;text-align:right;">
-                          <span style="color:#111827;font-size:14px;font-weight:600;">
-                            ${new Date(user.createdAt).toLocaleDateString('en-US', { 
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric'
-                            })}
-                          </span>
-                        </td>
-                      </tr>
-                    </table>
+                  <div style="text-align:center;margin:30px 0;">
+                    <a href="https://fundhub.com/login" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;display:inline-block;">
+                      Get Started
+                    </a>
                   </div>
 
-                  <!-- Quick Start -->
-                  <div>
-                    <h3 style="margin:0 0 15px;color:#374151;font-size:16px;font-weight:700;">
-                      🚀 Quick Start Guide
-                    </h3>
-                    <div style="margin-bottom:14px;padding-left:26px;position:relative;">
-                      <div style="position:absolute;left:0;top:3px;width:18px;height:18px;background:#111827;border-radius:50%;color:#fff;text-align:center;line-height:18px;font-size:11px;font-weight:700;">1</div>
-                      <div style="color:#374151;font-size:14px;font-weight:600;margin-bottom:3px;">Explore Your Dashboard</div>
-                      <div style="color:#6b7280;font-size:13px;line-height:1.5;">Discover tools and features available for you</div>
-                    </div>
-                    <div style="margin-bottom:14px;padding-left:26px;position:relative;">
-                      <div style="position:absolute;left:0;top:3px;width:18px;height:18px;background:#111827;border-radius:50%;color:#fff;text-align:center;line-height:18px;font-size:11px;font-weight:700;">2</div>
-                      <div style="color:#374151;font-size:14px;font-weight:600;margin-bottom:3px;">Create Your First Campaign</div>
-                      <div style="color:#6b7280;font-size:13px;line-height:1.5;">Share your story and start making an impact</div>
-                    </div>
-                    <div style="padding-left:26px;position:relative;">
-                      <div style="position:absolute;left:0;top:3px;width:18px;height:18px;background:#111827;border-radius:50%;color:#fff;text-align:center;line-height:18px;font-size:11px;font-weight:700;">3</div>
-                      <div style="color:#374151;font-size:14px;font-weight:600;margin-bottom:3px;">Connect & Support</div>
-                      <div style="color:#6b7280;font-size:13px;line-height:1.5;">Find and support campaigns that inspire you</div>
-                    </div>
-                  </div>
+                  <p style="margin:0;color:#4b5563;font-size:14px;line-height:1.6;">
+                    If you have any questions or need help, feel free to reply to this email — our support team will be happy to assist you.
+                  </p>
 
-                  <!-- Help Section -->
-                  <div style="background:#f9fafb;border-radius:8px;padding:18px;text-align:center;border:1px solid #e5e7eb;margin-top:35px;">
-                    <p style="margin:0 0 10px;color:#6b7280;font-size:14px;line-height:1.5;">
-                      Need help getting started? We’re here for you!
-                    </p>
-                    <a href="#" style="color:#111827;text-decoration:none;font-weight:600;font-size:14px;margin:0 8px;">Help Center</a>
-                    <span style="color:#d1d5db;">•</span>
-                    <a href="#" style="color:#111827;text-decoration:none;font-weight:600;font-size:14px;margin:0 8px;">Contact Support</a>
-                  </div>
+                  <p style="margin:30px 0 0;color:#6b7280;font-size:13px;text-align:center;">
+                    With ❤️ from the <strong>FundHub Team</strong>
+                  </p>
                 </div>
 
                 <!-- Footer -->
-                <div style="background:#f9fafb;padding:25px;text-align:center;border-top:1px solid #e5e7eb;">
-                  <p style="margin:0 0 10px;color:#6b7280;font-size:13px;line-height:1.5;">
-                    You’re receiving this email because you signed up on <strong>FundHub</strong>.
-                  </p>
-                  <div style="margin:10px 0;">
-                    <a href="#" style="margin:0 6px;color:#9ca3af;text-decoration:none;font-size:12px;">Privacy Policy</a>
-                    <span style="color:#d1d5db;">•</span>
-                    <a href="#" style="margin:0 6px;color:#9ca3af;text-decoration:none;font-size:12px;">Terms of Service</a>
-                    <span style="color:#d1d5db;">•</span>
-                    <a href="#" style="margin:0 6px;color:#9ca3af;text-decoration:none;font-size:12px;">Unsubscribe</a>
-                  </div>
-                  <p style="margin:10px 0 0;color:#d1d5db;font-size:12px;">
+                <div style="background:#f9fafb;padding:20px;text-align:center;">
+                  <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.4;">
+                    You’re receiving this email because you signed up for FundHub.<br/>
                     © ${new Date().getFullYear()} FundHub. All rights reserved.
                   </p>
+                  <div style="margin-top:10px;">
+                    <a href="https://fundhub.com" style="color:#2563eb;text-decoration:none;font-size:12px;">Visit Website</a> |
+                    <a href="https://fundhub.com/unsubscribe" style="color:#2563eb;text-decoration:none;font-size:12px;">Unsubscribe</a>
+                  </div>
                 </div>
-
               </td>
             </tr>
           </table>
         </td>
       </tr>
     </table>
-
   </body>
 </html>
 `;
