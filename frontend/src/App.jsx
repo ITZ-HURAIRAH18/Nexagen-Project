@@ -25,7 +25,7 @@ import Availability from "./pages/user/Availability";
 import Bookings from "./pages/user/Bookings";
 import BookingForm from "./pages/user/BookingForm";
 
-import MeetingRoom from "./pages/MeetingRoom";
+import MeetingRoom from "./components/MeetingRoom";
 // 🔒 Protected route wrapper
 import ProtectedRoute from "./routes/ProtectedRoute";
 
