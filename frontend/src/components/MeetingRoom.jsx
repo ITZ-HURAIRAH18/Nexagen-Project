@@ -53,13 +53,13 @@ const MeetingRoom = () => {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           // Try to provide helpful guidance based on the issue
           let guidance = "Your browser doesn't support camera/microphone access. ";
-          
-          if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+
+          if (window.location.protocol === 'https:' && window.location.hostname !== 'localhost') {
             guidance += "Camera access requires HTTPS. Please access the site via https:// or use localhost for testing.";
           } else {
             guidance += "Please use a modern browser like Chrome (version 53+), Firefox (version 36+), or Edge (version 79+).";
           }
-          
+
           throw new Error(guidance);
         }
 
@@ -78,14 +78,18 @@ const MeetingRoom = () => {
           }
         });
         if (!mounted) return;
-        
+
         setStatus("Camera access granted. Connecting to meeting...");
         setStream(localStream);
         if (userVideo.current) userVideo.current.srcObject = localStream;
 
         // 🌐 Connect to /meeting namespace
         socketRef.current = io(
-          `${import.meta.env.VITE_API_BASE || "http://localhost:5000"}/meeting`
+          `${import.meta.env.VITE_API_BASE || "https://localhost:5000"}/meeting`,
+          {
+            secure: true,
+            rejectUnauthorized: false,
+          }
         );
 
         socketRef.current.on("connect", () => {
@@ -160,7 +164,7 @@ const MeetingRoom = () => {
       } catch (err) {
         console.error("Meeting initialization failed:", err);
         let errorMessage = "Failed to initialize meeting. ";
-        
+
         if (err.name === "NotAllowedError") {
           errorMessage = "Camera/microphone access denied. Please allow permissions and refresh.";
         } else if (err.name === "NotFoundError") {
@@ -170,7 +174,7 @@ const MeetingRoom = () => {
         } else if (err.message) {
           errorMessage = err.message;
         }
-        
+
         setError(errorMessage);
         setStatus("Error");
         setStream(null);
@@ -183,7 +187,7 @@ const MeetingRoom = () => {
       mounted = false;
       try {
         socketRef.current?.disconnect();
-      } catch (e) {}
+      } catch (e) { }
       if (stream) stream.getTracks().forEach((t) => t.stop());
       peersRef.current.forEach((p) => p.destroy?.());
       peersRef.current = [];

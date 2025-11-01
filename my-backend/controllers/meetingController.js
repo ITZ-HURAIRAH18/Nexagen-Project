@@ -33,7 +33,7 @@ export const getMeetingByRoomId = async (req, res) => {
     // Temporary mock response
     return res.json({
       valid: true,
-      url: `http://localhost:5173/meeting/${roomId}`,
+      url: `https://localhost:5173/meeting/${roomId}`,
       bookingInfo: {
         guest: "Demo Guest",
         hostId: "Demo Host",
