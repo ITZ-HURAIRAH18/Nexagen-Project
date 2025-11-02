@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Peer from "simple-peer";
 import io from "socket.io-client";
 import axiosInstance from "../api/axiosInstance";
+import { getSocketUrl } from "../utils/apiConfig";
 
 const MeetingRoom = () => {
   const { roomId } = useParams();
@@ -84,24 +85,117 @@ const MeetingRoom = () => {
         if (userVideo.current) userVideo.current.srcObject = localStream;
 
         // 🌐 Connect to /meeting namespace
-        console.log("Connecting to meeting WebSocket...",import.meta.env.VITE_WEBSOCKET_URL);
+        const socketUrl = getSocketUrl();
+        const isNetworkIP = !['localhost', '127.0.0.1'].includes(window.location.hostname);
+        const useSecure = window.location.protocol === 'https:';
+        
+        // Pre-check backend availability (this helps trigger certificate acceptance on mobile)
+        if (isNetworkIP && useSecure) {
+          setStatus("Validating backend connection...");
+          try {
+            // Try to fetch from backend API to trigger certificate acceptance dialog
+            const testUrl = `${socketUrl}/api/meetings/${roomId}`;
+            await fetch(testUrl, {
+              method: 'GET',
+              mode: 'cors',
+              credentials: 'omit',
+              headers: {
+                'Accept': 'application/json',
+              },
+            }).catch(() => {
+              // Ignore fetch errors - we're just trying to trigger cert acceptance
+              console.log("Backend pre-check completed (errors are expected for cert acceptance)");
+            });
+          } catch (e) {
+            // Ignore errors - this is just a pre-check
+            console.log("Backend pre-check:", e.message);
+          }
+        }
+        
+        console.log("🔌 Attempting to connect to:", `${socketUrl}/meeting`);
+        console.log("🔒 Connection settings:", { isNetworkIP, useSecure, hostname: window.location.hostname });
+        
+        // For network IPs, prioritize polling (it handles certificate issues better than websocket)
+        // Polling uses XHR which is more forgiving with certificate mismatches
+        const transportOrder = isNetworkIP ? ['polling'] : ['websocket', 'polling'];
+        
         socketRef.current = io(
-          `${import.meta.env.VITE_WEBSOCKET_URL}/meeting`,
+          `${socketUrl}/meeting`,
           {
-            secure: true,
-            rejectUnauthorized: false,
+            transports: transportOrder,
+            upgrade: false, // Disable upgrade for network IPs to avoid certificate issues during upgrade
+            rememberUpgrade: false,
+            secure: useSecure,
+            rejectUnauthorized: false, // Note: browsers still validate certificates, this only affects Node.js
+            timeout: 45000, // 45 second timeout for mobile/slow networks
+            reconnection: true,
+            reconnectionDelay: 3000,
+            reconnectionDelayMax: 15000,
+            reconnectionAttempts: 5,
+            autoConnect: true,
+            forceNew: isNetworkIP, // Force new connection for network IPs
+            withCredentials: false,
+            // Additional options for better mobile support
+            path: '/socket.io/',
           }
         );
 
         socketRef.current.on("connect", () => {
           console.log("🎥 Connected to meeting namespace:", socketRef.current.id);
+          console.log("📡 Transport:", socketRef.current.io?.engine?.transport?.name);
           setStatus("Connected. Joining room...");
           socketRef.current.emit("join_meeting_room", roomId);
         });
 
         socketRef.current.on("connect_error", (err) => {
           console.error("Socket connection error:", err);
-          setError("Failed to connect to meeting server. Please check if backend is running.");
+          const errorDetails = {
+            message: err.message,
+            type: err.type,
+            description: err.description,
+            url: `${socketUrl}/meeting`,
+            protocol: window.location.protocol,
+            hostname: window.location.hostname,
+            transport: socketRef.current?.io?.engine?.transport?.name,
+          };
+          console.error("Error details:", errorDetails);
+          
+          // Provide helpful error message for certificate issues
+          let errorMsg = `Failed to connect to meeting server at ${socketUrl}. `;
+          
+          if (err.message.includes('xhr poll error') || 
+              err.message.includes('NetworkError') ||
+              err.message.includes('Failed to fetch')) {
+            if (isNetworkIP && useSecure) {
+              errorMsg += `This may be a certificate mismatch issue. `;
+              errorMsg += `Try visiting ${socketUrl} directly in your browser first to accept the certificate, then refresh this page.`;
+            } else {
+              errorMsg += `Error: ${err.message}. Please check if the backend server is running and accessible.`;
+            }
+          } else {
+            errorMsg += `Error: ${err.message}`;
+          }
+          
+          setError(errorMsg);
+          setStatus("Connection failed");
+        });
+
+        socketRef.current.on("disconnect", (reason) => {
+          console.warn("Socket disconnected:", reason);
+          if (reason === 'io server disconnect') {
+            // Server disconnected, try to reconnect
+            socketRef.current.connect();
+          }
+        });
+
+        socketRef.current.on("reconnect_attempt", (attemptNumber) => {
+          console.log(`🔄 Reconnection attempt ${attemptNumber}`);
+          setStatus(`Reconnecting... (attempt ${attemptNumber})`);
+        });
+
+        socketRef.current.on("reconnect_failed", () => {
+          console.error("❌ Reconnection failed");
+          setError("Failed to reconnect to meeting server. Please refresh the page.");
           setStatus("Connection failed");
         });
 

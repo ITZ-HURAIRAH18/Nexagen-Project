@@ -1,8 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-// import { createServer } from "http";
-import { createServer } from "http";
+import http from "http";
+import https from "https";
+import fs from "fs";
 import { Server } from "socket.io";
 import connectDB from "./config/db.js";
 
@@ -28,21 +29,35 @@ app.use("/api/host", hostRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/meetings", meetingRoutes);
 
-// ✅ Create server + Socket.io
-// const server = createServer(app);
-// const sslOptions = {
-//   key: fs.readFileSync("localhost-key.pem"),
-//   cert: fs.readFileSync("localhost.pem"),
-// };
-
-// // ✅ Create HTTPS server
-// const server = https.createServer(sslOptions, app);
-const server = createServer(app);
+// ✅ Create server (prefer HTTPS with local certs; fallback to HTTP)
+let server;
+try {
+  const keyPath = new URL("./localhost-key.pem", import.meta.url);
+  const certPath = new URL("./localhost.pem", import.meta.url);
+  const sslOptions = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath),
+  };
+  server = https.createServer(sslOptions, app);
+  console.log("🔐 HTTPS enabled (localhost-key.pem, localhost.pem)");
+} catch (err) {
+  console.warn(
+    "⚠️ HTTPS certificates not found/invalid. Falling back to HTTP:",
+    err?.message
+  );
+  server = http.createServer(app);
+}
 const io = new Server(server, {
   cors: {
-    origin: "*", // change to your frontend URL
+    origin: "*", // Allow all origins for development
     methods: ["GET", "POST"],
+    credentials: true,
   },
+  transports: ['websocket', 'polling'], // Support both transports
+  allowEIO3: true, // Backward compatibility
+  pingTimeout: 60000, // 60 seconds
+  pingInterval: 25000, // 25 seconds
+  connectTimeout: 45000, // 45 seconds
 });
 
 // ✅ Track meeting rooms
@@ -125,6 +140,7 @@ meetingNamespace.on("connection", (socket) => {
 export { io };
 // ✅ Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () =>
-  console.log(`✅ Server running on port ${PORT}`)
+const HOST = process.env.HOST || '0.0.0.0'; // Listen on all network interfaces
+server.listen(PORT, HOST, () =>
+  console.log(`✅ Server running on ${HOST}:${PORT}`)
 );

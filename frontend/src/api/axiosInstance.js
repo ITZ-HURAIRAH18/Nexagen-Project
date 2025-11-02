@@ -1,7 +1,8 @@
 import axios from "axios";
+import { getApiBaseUrl } from "../utils/apiConfig";
 
 const axiosInstance = axios.create({
-  baseURL:  import.meta.env.VITE_API_BASE,
+  baseURL: `${getApiBaseUrl()}/api`,
 });
 
 axiosInstance.interceptors.request.use((config) => {

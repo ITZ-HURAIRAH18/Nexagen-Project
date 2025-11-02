@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axiosInstance";
 import HostHeader from "../../components/HostHeader";
 import { io } from "socket.io-client";
+import { getSocketUrl } from "../../utils/apiConfig";
 import {
   CalendarDaysIcon,
   ClockIcon,
@@ -11,11 +12,11 @@ import {
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
 
-// const socket = io("http://localhost:5000");
-console.log("WebSocket URL:", import.meta.env.VITE_WEBSOCKET_URL);
-const socket = io(import.meta.env.VITE_WEBSOCKET_URL, {
-  transports: ["websocket"],
+const socket = io(getSocketUrl(), {
+  secure: window.location.protocol === 'https:',
+  rejectUnauthorized: false,
 });
+
 const HostDashboard = () => {
   const [data, setData] = useState(null);
   const [page, setPage] = useState(1);

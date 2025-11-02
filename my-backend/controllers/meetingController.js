@@ -26,8 +26,6 @@
 
 // controllers/meetingController.js
 // controllers/meetingController.js
-import dotenv from "dotenv";
-dotenv.config();
 export const getMeetingByRoomId = async (req, res) => {
   try {
     const { roomId } = req.params;
@@ -35,7 +33,7 @@ export const getMeetingByRoomId = async (req, res) => {
     // Temporary mock response
     return res.json({
       valid: true,
-        url: `${process.env.FRONTEND_BASE_URL}/meeting/${roomId}`,
+      url: `https://localhost:5173/meeting/${roomId}`,
       bookingInfo: {
         guest: "Demo Guest",
         hostId: "Demo Host",
