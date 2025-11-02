@@ -2,9 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 // import { createServer } from "http";
-import https from "https";
-import fs from "fs";
-
+import { createServer } from "http";
 import { Server } from "socket.io";
 import connectDB from "./config/db.js";
 
@@ -32,13 +30,14 @@ app.use("/api/meetings", meetingRoutes);
 
 // ✅ Create server + Socket.io
 // const server = createServer(app);
-const sslOptions = {
-  key: fs.readFileSync("localhost-key.pem"),
-  cert: fs.readFileSync("localhost.pem"),
-};
+// const sslOptions = {
+//   key: fs.readFileSync("localhost-key.pem"),
+//   cert: fs.readFileSync("localhost.pem"),
+// };
 
-// ✅ Create HTTPS server
-const server = https.createServer(sslOptions, app);
+// // ✅ Create HTTPS server
+// const server = https.createServer(sslOptions, app);
+const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*", // change to your frontend URL
