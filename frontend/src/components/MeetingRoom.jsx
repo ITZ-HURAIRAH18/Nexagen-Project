@@ -84,8 +84,9 @@ const MeetingRoom = () => {
         if (userVideo.current) userVideo.current.srcObject = localStream;
 
         // 🌐 Connect to /meeting namespace
+        console.log("Connecting to meeting WebSocket...",import.meta.env.VITE_WEBSOCKET_URL);
         socketRef.current = io(
-          `${import.meta.env.VITE_API_BASE || "https://localhost:5000"}/meeting`,
+          `${import.meta.env.VITE_WEBSOCKET_URL}/meeting`,
           {
             secure: true,
             rejectUnauthorized: false,

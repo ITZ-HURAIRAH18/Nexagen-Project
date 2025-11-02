@@ -11,8 +11,11 @@ import {
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
 
-const socket = io("http://localhost:5000");
-
+// const socket = io("http://localhost:5000");
+console.log("WebSocket URL:", import.meta.env.VITE_WEBSOCKET_URL);
+const socket = io(import.meta.env.VITE_WEBSOCKET_URL, {
+  transports: ["websocket"],
+});
 const HostDashboard = () => {
   const [data, setData] = useState(null);
   const [page, setPage] = useState(1);
