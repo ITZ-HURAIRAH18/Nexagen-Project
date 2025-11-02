@@ -1,8 +1,10 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+// import { createServer } from "http";
 import https from "https";
 import fs from "fs";
+
 import { Server } from "socket.io";
 import connectDB from "./config/db.js";
 
@@ -21,85 +23,109 @@ app.use(express.json());
 // ✅ Connect MongoDB
 connectDB();
 
-// ✅ API Routes
+// ✅ Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/host", hostRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/meetings", meetingRoutes);
 
-// ✅ Root health check
-app.get("/", (req, res) => {
-  res.json({ status: "Backend running ✅" });
+// ✅ Create server + Socket.io
+// const server = createServer(app);
+const sslOptions = {
+  key: fs.readFileSync("localhost-key.pem"),
+  cert: fs.readFileSync("localhost.pem"),
+};
+
+// ✅ Create HTTPS server
+const server = https.createServer(sslOptions, app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // change to your frontend URL
+    methods: ["GET", "POST"],
+  },
 });
 
-// ✅ Only create HTTPS + Socket.IO when running locally
-let io = null;
-if (process.env.VERCEL !== "1") {
-  const sslOptions = {
-    key: fs.readFileSync("localhost-key.pem"),
-    cert: fs.readFileSync("localhost.pem"),
-  };
+// ✅ Track meeting rooms
+const meetingRooms = {};
 
-  const server = https.createServer(sslOptions, app);
+// ===============================
+// 🌍 GLOBAL SOCKET (dashboard, host updates, chat)
+// ===============================
+io.on("connection", (socket) => {
+  console.log("🟢 Dashboard/Global Client Connected:", socket.id);
 
-  io = new Server(server, {
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
-    },
+  // Chat / broadcast messages
+  socket.on("send_message", (msg) => {
+    console.log("💬 Global Message:", msg);
+    io.emit("receive_message", msg);
   });
 
-  const meetingRooms = {};
-
-  io.on("connection", (socket) => {
-    console.log("🟢 Global socket connected:", socket.id);
-    socket.on("send_message", (msg) => io.emit("receive_message", msg));
-    socket.on("disconnect", () =>
-      console.log("🔴 Socket disconnected:", socket.id)
-    );
+  // Host joins private room for dashboard live updates
+  socket.on("join_host_room", (hostId) => {
+    socket.join(hostId);
+    console.log(`🏠 Host ${hostId} joined private dashboard room`);
   });
 
-  const meetingNamespace = io.of("/meeting");
+  // ✅ Dashboard disconnect
+  socket.on("disconnect", () => {
+    console.log("🔴 Dashboard/Global Client Disconnected:", socket.id);
+  });
+});
+// ===============================
+// 🎥 MEETING SOCKET NAMESPACE
+// ===============================
+const meetingNamespace = io.of("/meeting");
 
-  meetingNamespace.on("connection", (socket) => {
-    console.log("🎥 Meeting Client Connected:", socket.id);
+meetingNamespace.on("connection", (socket) => {
+  console.log("🎥 Meeting Client Connected:", socket.id);
 
-    socket.on("join_meeting_room", (roomId) => {
-      if (!meetingRooms[roomId]) meetingRooms[roomId] = [];
-      meetingRooms[roomId].push(socket.id);
-      socket.join(roomId);
+  // Join specific meeting room
+  socket.on("join_meeting_room", (roomId) => {
+    if (!meetingRooms[roomId]) meetingRooms[roomId] = [];
+    meetingRooms[roomId].push(socket.id);
+    socket.join(roomId);
+    console.log(`👥 ${socket.id} joined meeting room ${roomId}`);
 
-      const users = meetingRooms[roomId];
-      if (users.length === 1) {
-        socket.emit("meeting_role", { initiator: false });
-      } else if (users.length === 2) {
-        socket.emit("meeting_role", { initiator: true });
-        meetingNamespace.to(users[0]).emit("peer_ready");
-      } else {
-        socket.emit("room_full");
+    const users = meetingRooms[roomId];
+
+    // Assign roles for WebRTC
+    if (users.length === 1) {
+      socket.emit("meeting_role", { initiator: false });
+    } else if (users.length === 2) {
+      socket.emit("meeting_role", { initiator: true });
+      const [firstUser] = users;
+      meetingNamespace.to(firstUser).emit("peer_ready");
+    } else {
+      socket.emit("room_full");
+    }
+  });
+
+  // WebRTC signaling between peers
+  socket.on("signal", ({ roomId, signal, sender }) => {
+    socket.to(roomId).emit("signal", { signal, sender });
+  });
+
+  // ✅ MEETING disconnect (separate from global)
+  socket.on("disconnect", () => {
+    console.log("❌ Meeting Client Disconnected:", socket.id);
+
+    for (const roomId in meetingRooms) {
+      meetingRooms[roomId] = meetingRooms[roomId].filter(
+        (id) => id !== socket.id
+      );
+
+      if (meetingRooms[roomId].length === 0) {
+        delete meetingRooms[roomId];
+        console.log(`🧹 Meeting room ${roomId} deleted (empty)`);
       }
-    });
-
-    socket.on("signal", ({ roomId, signal, sender }) => {
-      socket.to(roomId).emit("signal", { signal, sender });
-    });
-
-    socket.on("disconnect", () => {
-      for (const roomId in meetingRooms) {
-        meetingRooms[roomId] = meetingRooms[roomId].filter(
-          (id) => id !== socket.id
-        );
-        if (meetingRooms[roomId].length === 0) delete meetingRooms[roomId];
-      }
-    });
+    }
   });
+});
 
-  const PORT = process.env.PORT || 5000;
-  server.listen(PORT, () =>
-    console.log(`✅ Local HTTPS server running on port ${PORT}`)
-  );
-}
-
-// ✅ Export app (Vercel entry point)
-export default app;
+export { io };
+// ✅ Start server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () =>
+  console.log(`✅ Server running on port ${PORT}`)
+);
