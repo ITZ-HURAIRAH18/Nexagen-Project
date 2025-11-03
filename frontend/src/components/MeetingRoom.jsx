@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import Peer from "simple-peer";
 import io from "socket.io-client";
@@ -6,15 +6,110 @@ import axiosInstance from "../api/axiosInstance";
 import { getSocketUrl } from "../utils/apiConfig";
 
 const MeetingRoom = () => {
+  const navigate = useNavigate();
   const { roomId } = useParams();
   const [meetingInfo, setMeetingInfo] = useState(null);
   const [stream, setStream] = useState(null);
+  const streamRef = useRef(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Initializing...");
   const socketRef = useRef(null);
   const userVideo = useRef();
   const peersRef = useRef([]);
   const [remoteStreams, setRemoteStreams] = useState([]);
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  const [isMicOn, setIsMicOn] = useState(false);
+
+  const hasRemoteParticipants = remoteStreams.length > 0;
+  const videoGridCols = hasRemoteParticipants
+    ? remoteStreams.length > 2
+      ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+      : "grid-cols-1 lg:grid-cols-2"
+    : "grid-cols-1";
+  const localVideoShell = hasRemoteParticipants
+    ? "group relative w-full overflow-hidden rounded-2xl border border-slate-800/70 bg-slate-950/60 shadow-lg"
+    : "group relative mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-800/70 bg-slate-950/60 shadow-lg";
+  const statusLower = (status || "").toLowerCase();
+  const statusColor =
+    error || statusLower.includes("failed") || statusLower.includes("error")
+      ? "bg-red-400"
+      : statusLower.includes("reconnect") || statusLower.includes("waiting")
+        ? "bg-amber-400"
+        : "bg-emerald-400";
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  useEffect(() => {
+    if (!stream) {
+      setIsCameraOn(false);
+      setIsMicOn(false);
+      return;
+    }
+    const [videoTrack] = stream.getVideoTracks();
+    const [audioTrack] = stream.getAudioTracks();
+    setIsCameraOn(Boolean(videoTrack?.enabled));
+    setIsMicOn(Boolean(audioTrack?.enabled));
+  }, [stream]);
+
+  const handleToggleCamera = () => {
+    const activeStream = streamRef.current;
+    if (!activeStream) return;
+    setIsCameraOn((prev) => {
+      const next = !prev;
+      activeStream.getVideoTracks().forEach((track) => {
+        track.enabled = next;
+      });
+      return next;
+    });
+  };
+
+  const handleToggleMic = () => {
+    const activeStream = streamRef.current;
+    if (!activeStream) return;
+    setIsMicOn((prev) => {
+      const next = !prev;
+      activeStream.getAudioTracks().forEach((track) => {
+        track.enabled = next;
+      });
+      return next;
+    });
+  };
+
+  const teardownConnections = () => {
+    try {
+      socketRef.current?.disconnect();
+    } catch (disconnectError) {
+      console.error("Socket disconnect error:", disconnectError);
+    }
+    peersRef.current.forEach((peer) => peer.destroy?.());
+    peersRef.current = [];
+    const activeStream = streamRef.current;
+    if (activeStream) {
+      activeStream.getTracks().forEach((track) => {
+        track.stop();
+      });
+      streamRef.current = null;
+    }
+    if (userVideo.current) {
+      userVideo.current.srcObject = null;
+    }
+  };
+
+  const handleLeaveCall = () => {
+    teardownConnections();
+    setRemoteStreams([]);
+    setStream(null);
+    streamRef.current = null;
+    setError("");
+    setStatus("Call ended");
+    setIsCameraOn(false);
+    setIsMicOn(false);
+    const hasHistory = typeof window !== "undefined" && window.history.length > 1;
+    if (hasHistory) {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
+  };
 
   // Log browser info for debugging
   useEffect(() => {
@@ -81,7 +176,8 @@ const MeetingRoom = () => {
         if (!mounted) return;
 
         setStatus("Camera access granted. Connecting to meeting...");
-        setStream(localStream);
+    setStream(localStream);
+    streamRef.current = localStream;
         if (userVideo.current) userVideo.current.srcObject = localStream;
 
         // 🌐 Connect to /meeting namespace
@@ -273,6 +369,7 @@ const MeetingRoom = () => {
         setError(errorMessage);
         setStatus("Error");
         setStream(null);
+        streamRef.current = null;
       }
     };
     start();
@@ -280,80 +377,234 @@ const MeetingRoom = () => {
     // 🔹 Cleanup when leaving page
     return () => {
       mounted = false;
-      try {
-        socketRef.current?.disconnect();
-      } catch (e) { }
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-      peersRef.current.forEach((p) => p.destroy?.());
-      peersRef.current = [];
+      teardownConnections();
     };
   }, [roomId]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h1 className="text-2xl font-semibold mb-2">
-        Meeting Room: {roomId}
-      </h1>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-10 px-4 py-10 sm:px-8">
+        <header className="flex flex-col items-center gap-2 text-center">
+          <span className="text-xs uppercase tracking-[0.35em] text-slate-400">Meeting Room</span>
+          <h1 className="text-3xl font-semibold sm:text-4xl">Room {roomId}</h1>
+          {meetingInfo && (
+            <p className="text-sm text-slate-300">
+              {meetingInfo.bookingInfo?.guest ?? "Guest"} with {meetingInfo.bookingInfo?.host ?? "Host"}
+            </p>
+          )}
+        </header>
 
-      {meetingInfo && (
-        <p className="text-gray-600 mb-4">
-          {meetingInfo.bookingInfo?.guest} with{" "}
-          {meetingInfo.bookingInfo?.host}
-        </p>
-      )}
+        <section className="grid gap-6 lg:grid-cols-[2fr,1fr] xl:gap-8">
+          <div className="rounded-3xl border border-slate-800/80 bg-slate-900/60 p-4 shadow-2xl backdrop-blur sm:p-6">
+            <div className={`grid gap-5 ${videoGridCols}`}>
+              <div className={`${localVideoShell} aspect-[4/3] sm:aspect-[16/9] min-h-[220px] sm:min-h-[260px] max-h-[55vh] sm:max-h-[62vh] lg:max-h-[68vh]`}>
+                <video
+                  ref={userVideo}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="h-full w-full object-cover"
+                />
+                {!stream && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-950/50 text-sm text-slate-300">
+                    Waiting for camera access...
+                  </div>
+                )}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-5 pb-5 pt-14">
+                  <p className="text-sm font-semibold text-white">You</p>
+                  <p className="text-xs text-slate-300">{stream ? (isMicOn ? "Microphone active" : "Microphone muted") : "Requesting media permissions"}</p>
+                </div>
+              </div>
 
-      <div className="flex gap-4 flex-wrap justify-center">
-        <div className="flex flex-col items-center">
-          <p className="text-sm text-gray-600 mb-2">You</p>
-          <video
-            ref={userVideo}
-            autoPlay
-            muted
-            playsInline
-            className="w-64 h-48 bg-black rounded-lg"
-          />
-        </div>
-        {remoteStreams.map((stream, i) => (
-          <div key={i} className="flex flex-col items-center">
-            <p className="text-sm text-gray-600 mb-2">Participant {i + 1}</p>
-            <video
-              autoPlay
-              playsInline
-              className="w-64 h-48 bg-black rounded-lg"
-              ref={(videoEl) => {
-                if (videoEl) videoEl.srcObject = stream;
-              }}
-            />
-          </div>
-        ))}
-      </div>
+              {remoteStreams.map((remoteStream, i) => {
+                const isRemoteVideoActive = remoteStream.getVideoTracks().some(
+                  (track) => track.readyState === "live" && track.enabled
+                );
+                return (
+                  <div
+                    key={i}
+                    className="group relative aspect-[4/3] sm:aspect-[16/9] min-h-[200px] sm:min-h-[220px] max-h-[45vh] sm:max-h-[55vh] lg:max-h-[60vh] xl:max-h-[68vh] overflow-hidden rounded-2xl border border-slate-800/70 bg-slate-950/60 shadow-lg"
+                  >
+                    {!isRemoteVideoActive && (
+                      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-slate-950/70 text-sm text-slate-300">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-lg font-medium">
+                          {`P${i + 1}`}
+                        </div>
+                        <span className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Video off</span>
+                      </div>
+                    )}
+                    <video
+                      autoPlay
+                      playsInline
+                      className="h-full w-full object-cover"
+                      ref={(videoEl) => {
+                        if (videoEl) videoEl.srcObject = remoteStream;
+                      }}
+                    />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-5 pb-5 pt-14">
+                      <p className="text-sm font-semibold text-white">Participant {i + 1}</p>
+                      <p className="text-xs text-slate-300">Connected</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
-      {/* Status message */}
-      <div className="mt-4 text-center">
-        <p className="text-gray-700 font-medium">{status}</p>
-        {error && (
-          <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg max-w-lg mx-auto">
-            <p className="text-red-600 font-medium">Error:</p>
-            <p className="text-red-700 text-sm mt-1">{error}</p>
-            <div className="mt-3 text-xs text-gray-600 text-left">
-              <p className="font-semibold">Troubleshooting tips:</p>
-              <ul className="list-disc list-inside mt-1">
-                <li>Ensure you're using Chrome 53+, Firefox 36+, or Edge 79+</li>
-                <li>Check that your camera/mic is connected and working</li>
-                <li>Close other apps using the camera (Zoom, Teams, etc.)</li>
-                <li>Try accessing via localhost if testing locally</li>
-                <li>Check browser permissions (click 🔒 in address bar)</li>
-              </ul>
+            {!hasRemoteParticipants && stream && !error && (
+              <div className="mx-auto mt-5 w-full max-w-2xl rounded-xl border border-slate-800/80 bg-slate-900/80 p-5 text-center text-sm text-slate-200">
+                Share this room link to bring someone into the room. The layout seamlessly adapts once a participant joins.
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4 text-sm">
+              <button
+                type="button"
+                onClick={handleToggleMic}
+                disabled={!stream}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  isMicOn && stream
+                    ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+                    : "bg-slate-800/80 text-slate-200 hover:bg-slate-800"
+                } ${stream ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
+              >
+                <span className="inline-flex h-5 w-5 items-center justify-center">
+                  {isMicOn && stream ? (
+                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M12 3c-1.105 0-2 .895-2 2v6c0 1.105.895 2 2 2s2-.895 2-2V5c0-1.105-.895-2-2-2z" />
+                      <path d="M6 11a6 6 0 0 0 12 0" />
+                      <path d="M12 17v4" />
+                      <path d="M9 21h6" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M15 10v-5a3 3 0 0 0-5.73-1" />
+                      <path d="M9 11v-4" />
+                      <path d="M12 17v4" />
+                      <path d="M7 21h10" />
+                      <path d="M5 5l14 14" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M6 11a6 6 0 0 0 10.06 4.24" strokeLinecap="round" />
+                    </svg>
+                  )}
+                </span>
+                {isMicOn && stream ? "Mute" : "Unmute"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleToggleCamera}
+                disabled={!stream}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 font-medium transition focus:outline-none focus:ring-2 focus:ring-sky-400/60 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  isCameraOn && stream
+                    ? "bg-sky-500/20 text-sky-300 hover:bg-sky-500/30"
+                    : "bg-slate-800/80 text-slate-200 hover:bg-slate-800"
+                } ${stream ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
+              >
+                <span className="inline-flex h-5 w-5 items-center justify-center">
+                  {isCameraOn && stream ? (
+                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M5 7a3 3 0 0 1 3-3h5a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" />
+                      <path d="M16 10l4-3v10l-4-3z" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M7 7a3 3 0 0 1 3-3h3a3 3 0 0 1 3 3v5" />
+                      <path d="M5 5l14 14" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M7 15v2a3 3 0 0 0 3 3h5a3 3 0 0 0 2.47-1.3" />
+                      <path d="M16 10l3-2v6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                {isCameraOn && stream ? "Turn camera off" : "Turn camera on"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLeaveCall}
+                className="inline-flex items-center gap-2 rounded-full bg-red-500/80 px-4 py-2 font-medium text-red-50 transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+              >
+                <span className="inline-flex h-5 w-5 items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M4 13c0-4.418 3.582-8 8-8s8 3.582 8 8" strokeLinecap="round" />
+                    <path d="M4 15l2.5-.833a2 2 0 0 1 1.9.416l2.7 2.417a2 2 0 0 0 1.3.5h1.2a2 2 0 0 0 1.3-.5l2.7-2.417a2 2 0 0 1 1.9-.416L20 15" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                Leave call
+              </button>
+
+              {canShare && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.share({
+                        title: "Join my meeting",
+                        text: "Tap to join the meeting",
+                        url: window.location.href,
+                      });
+                    } catch (shareError) {
+                      console.error("Share cancelled", shareError);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full bg-slate-800/80 px-4 py-2 font-medium text-slate-200 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                >
+                  <span className="inline-flex h-5 w-5 items-center justify-center">
+                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M12 5l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M8 18h5a4 4 0 0 0 4-4V9" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  Share invite
+                </button>
+              )}
             </div>
           </div>
-        )}
-      </div>
 
-      {stream && remoteStreams.length === 0 && !error && (
-        <div className="mt-2 text-gray-500 text-sm">
-          Share this room link with others to join
-        </div>
-      )}
+          <aside className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <span className={`inline-flex h-2.5 w-2.5 rounded-full ${statusColor}`} />
+                <p className="text-sm font-medium text-slate-200">{status}</p>
+              </div>
+              <p className="mt-4 text-xs uppercase tracking-[0.35em] text-slate-500">Participants</p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {hasRemoteParticipants ? remoteStreams.length + 1 : 1} active
+              </p>
+              {meetingInfo && (
+                <div className="mt-4 space-y-2 text-sm text-slate-300">
+                  <p>
+                    <span className="text-slate-400">Host:</span> {meetingInfo.bookingInfo?.host ?? "—"}
+                  </p>
+                  <p>
+                    <span className="text-slate-400">Guest:</span> {meetingInfo.bookingInfo?.guest ?? "—"}
+                  </p>
+                  {meetingInfo.bookingInfo?.scheduledFor && (
+                    <p>
+                      <span className="text-slate-400">Scheduled:</span> {new Date(meetingInfo.bookingInfo.scheduledFor).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-sm text-red-200 shadow-2xl">
+                <p className="text-base font-semibold text-red-100">Connection issue</p>
+                <p className="mt-2 leading-relaxed">{error}</p>
+                <div className="mt-4 text-left text-xs text-red-100/80">
+                  <p className="font-semibold uppercase tracking-[0.25em] text-red-200">Troubleshooting</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    <li>Ensure you're using Chrome 53+, Firefox 36+, or Edge 79+</li>
+                    <li>Check that your camera and microphone are connected and working</li>
+                    <li>Close other applications that might be using your camera</li>
+                    <li>Try accessing via localhost if testing locally</li>
+                    <li>Visit the backend URL directly to accept the certificate if prompted</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </aside>
+        </section>
+      </div>
     </div>
   );
 };
