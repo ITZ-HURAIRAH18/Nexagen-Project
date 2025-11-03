@@ -57,8 +57,8 @@ export const getMeetingByRoomId = async (req, res) => {
           role: host.role || null,
         }
       : hostId
-        ? { id: hostId, name: hostId }
-        : null;
+      ? { id: hostId, name: hostId }
+      : null;
 
     const guestInfo = booking.guest
       ? {
@@ -79,7 +79,7 @@ export const getMeetingByRoomId = async (req, res) => {
       bookingInfo: {
         guest: guestInfo,
         host: hostInfo,
-  hostId,
+        hostId,
         start: booking.start,
         end: booking.end,
         duration: booking.duration,
@@ -126,7 +126,9 @@ export const startMeetingReminderJob = () => {
           timeStyle: "short",
         }).format(new Date(b.start));
         const joinUrl = b.meetingRoom
-          ? `${process.env.FRONTEND_URL || "http://localhost:5173"}/meeting/${b.meetingRoom}`
+          ? `${process.env.FRONTEND_URL || "http://localhost:5173"}/meeting/${
+              b.meetingRoom
+            }`
           : null;
 
         if (!b.reminderSentToGuest && b.guest?.email) {
@@ -155,7 +157,11 @@ export const startMeetingReminderJob = () => {
                 <div style=\"font-family:Arial, sans-serif;\">
                   <h2>Reminder: Your meeting starts in 5 minutes</h2>
                   <p><strong>When:</strong> ${startStr}</p>
-                  ${joinUrl ? `<p><a href=\"${joinUrl}\">Open meeting room</a></p>` : ""}
+                  ${
+                    joinUrl
+                      ? `<p><a href=\"${joinUrl}\">Open meeting room</a></p>`
+                      : ""
+                  }
                 </div>
               `;
               await sendDirectEmail(
