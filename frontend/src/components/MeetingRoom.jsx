@@ -4,10 +4,12 @@ import Peer from "simple-peer";
 import io from "socket.io-client";
 import axiosInstance from "../api/axiosInstance";
 import { getSocketUrl } from "../utils/apiConfig";
+import { useAuth } from "../context/AuthContext";
 
 const MeetingRoom = () => {
   const navigate = useNavigate();
   const { roomId } = useParams();
+  const { user } = useAuth();
   const [meetingInfo, setMeetingInfo] = useState(null);
   const [stream, setStream] = useState(null);
   const streamRef = useRef(null);
@@ -19,6 +21,32 @@ const MeetingRoom = () => {
   const [remoteStreams, setRemoteStreams] = useState([]);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [isMicOn, setIsMicOn] = useState(false);
+
+  const getDisplayName = (participant, fallback) => {
+    if (!participant) return fallback;
+    if (typeof participant === "string") return participant;
+    return (
+      participant.name ||
+      participant.fullName ||
+      participant.username ||
+      participant.email ||
+      fallback
+    );
+  };
+
+  const getDisplayEmail = (participant) => {
+    if (!participant || typeof participant === "string") return null;
+    return participant.email || null;
+  };
+
+  const hostDisplayName = getDisplayName(meetingInfo?.bookingInfo?.host, "Host");
+  const guestDisplayName = getDisplayName(meetingInfo?.bookingInfo?.guest, "Guest");
+  const hostEmail = getDisplayEmail(meetingInfo?.bookingInfo?.host);
+  const guestEmail = getDisplayEmail(meetingInfo?.bookingInfo?.guest);
+
+  const isCurrentUserHost = user && meetingInfo?.bookingInfo?.host?.id
+    ? String(user?._id || user?.id) === String(meetingInfo.bookingInfo.host.id)
+    : false;
 
   const hasRemoteParticipants = remoteStreams.length > 0;
   const videoGridCols = hasRemoteParticipants
@@ -175,7 +203,7 @@ const MeetingRoom = () => {
         });
         if (!mounted) return;
 
-        setStatus("Camera access granted. Connecting to meeting...");
+    setStatus("Camera access granted. Connecting to meeting...");
     setStream(localStream);
     streamRef.current = localStream;
         if (userVideo.current) userVideo.current.srcObject = localStream;
@@ -384,15 +412,35 @@ const MeetingRoom = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-10 px-4 py-10 sm:px-8">
-        <header className="flex flex-col items-center gap-2 text-center">
-          <span className="text-xs uppercase tracking-[0.35em] text-slate-400">Meeting Room</span>
-          <h1 className="text-3xl font-semibold sm:text-4xl">Room {roomId}</h1>
-          {meetingInfo && (
-            <p className="text-sm text-slate-300">
-              {meetingInfo.bookingInfo?.guest ?? "Guest"} with {meetingInfo.bookingInfo?.host ?? "Host"}
-            </p>
-          )}
-        </header>
+      <header className="flex flex-col items-center gap-2 text-center">
+  <span className="text-xs uppercase tracking-[0.35em] text-slate-400">
+    Meeting Room
+  </span>
+
+  {meetingInfo && (
+    <div className="flex flex-col items-center gap-1 text-sm sm:text-base text-slate-200">
+      <p className="font-semibold">
+        <span className="text-white font-bold">{hostDisplayName}</span>
+        <span className="mx-2 text-slate-400 font-medium">meeting with</span>
+        <span className="text-white font-bold">{guestDisplayName}</span>
+      </p>
+
+      {(hostEmail || guestEmail) && (
+        <p className="text-[11px] sm:text-xs uppercase tracking-[0.25em] text-slate-400 font-medium">
+          {hostEmail ? <span className="font-semibold text-slate-300">Host:</span> : null}{" "}
+          {hostEmail ? hostEmail : null}
+          {hostEmail && guestEmail ? "  •  " : ""}
+          {guestEmail ? (
+            <>
+              <span className="font-semibold text-slate-300"> Guest:</span> {guestEmail}
+            </>
+          ) : null}
+        </p>
+      )}
+    </div>
+  )}
+</header>
+
 
         <section className="grid gap-6 lg:grid-cols-[2fr,1fr] xl:gap-8">
           <div className="rounded-3xl border border-slate-800/80 bg-slate-900/60 p-4 shadow-2xl backdrop-blur sm:p-6">
@@ -442,7 +490,13 @@ const MeetingRoom = () => {
                       }}
                     />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-5 pb-5 pt-14">
-                      <p className="text-sm font-semibold text-white">Participant {i + 1}</p>
+                      <p className="text-sm font-semibold text-white">
+                        {remoteStreams.length === 1
+                          ? isCurrentUserHost
+                            ? guestDisplayName
+                            : hostDisplayName
+                          : `Participant ${i + 1}`}
+                      </p>
                       <p className="text-xs text-slate-300">Connected</p>
                     </div>
                   </div>
@@ -572,10 +626,12 @@ const MeetingRoom = () => {
               {meetingInfo && (
                 <div className="mt-4 space-y-2 text-sm text-slate-300">
                   <p>
-                    <span className="text-slate-400">Host:</span> {meetingInfo.bookingInfo?.host ?? "—"}
+                    <span className="text-slate-400">Host:</span> {hostDisplayName}
+                    {hostEmail && <span className="text-slate-500"> ({hostEmail})</span>}
                   </p>
                   <p>
-                    <span className="text-slate-400">Guest:</span> {meetingInfo.bookingInfo?.guest ?? "—"}
+                    <span className="text-slate-400">Guest:</span> {guestDisplayName}
+                    {guestEmail && <span className="text-slate-500"> ({guestEmail})</span>}
                   </p>
                   {meetingInfo.bookingInfo?.scheduledFor && (
                     <p>

@@ -16,6 +16,14 @@ const bookingSchema = new mongoose.Schema(
     start: Date,
     end: Date,
     duration: Number,
+    bufferBefore: { type: Number, default: 0 },
+    bufferAfter: { type: Number, default: 0 },
+    // Access window including buffers (computed on confirmation)
+    accessStart: { type: Date, default: null },
+    accessEnd: { type: Date, default: null },
+    // Email reminder flags
+    reminderSentToGuest: { type: Boolean, default: false },
+    reminderSentToHost: { type: Boolean, default: false },
     status: {
       type: String,
       enum: ["confirmed", "cancelled", "rescheduled", "pending"],

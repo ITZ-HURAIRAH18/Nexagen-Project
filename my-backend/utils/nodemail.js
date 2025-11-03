@@ -53,4 +53,19 @@ export const sendEmail = async (userId, subject, htmlTemplate, sendToAdmin = fal
   }
 };
 
+/**
+ * Send email directly to a given address (bypass user lookup)
+ */
+export const sendDirectEmail = async (to, subject, htmlTemplate) => {
+  if (!to) throw new Error("Recipient email is required");
+  const mailOptions = {
+    from: `"${process.env.EMAIL_NAME}" <${process.env.EMAIL}>`,
+    to,
+    subject,
+    html: htmlTemplate,
+  };
+  await transport.sendMail(mailOptions);
+  return { success: true };
+};
+
 export default sendEmail;

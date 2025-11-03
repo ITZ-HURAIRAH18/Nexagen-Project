@@ -39,7 +39,7 @@ export const getHostDashboard = async (req, res) => {
     const recentBookings = await Booking.find({ hostId })
       .sort({ createdAt: -1 })
       .limit(5)
-      .select("guest start end status duration createdAt");
+      .select("guest start end status duration createdAt meetingRoom");
 
     const availability = await Availability.findOne({ hostId });
 
@@ -90,7 +90,7 @@ export const emitHostDashboardUpdate = async (hostId) => {
     const recentBookings = await Booking.find({ hostId })
       .sort({ createdAt: -1 })
       .limit(5)
-      .select("guest start end status duration createdAt");
+      .select("guest start end status duration createdAt meetingRoom");
 
     const availability = await Availability.findOne({ hostId });
 
@@ -457,9 +457,17 @@ export const updateBookingStatus = async (req, res) => {
 
     booking.status = status;
 
-    // ✅ Generate unique meeting room ID if confirmed
-    if (status === "confirmed" && !booking.meetingRoom) {
-      booking.meetingRoom = uuidv4();
+    // ✅ On confirm: set meeting room and compute access window with buffers
+    if (status === "confirmed") {
+      if (!booking.meetingRoom) {
+        booking.meetingRoom = uuidv4();
+      }
+      const startTime = new Date(booking.start);
+      const endTime = new Date(booking.end);
+      const beforeMin = Number(booking.bufferBefore || 0);
+      const afterMin = Number(booking.bufferAfter || 0);
+      booking.accessStart = new Date(startTime.getTime() - beforeMin * 60000);
+      booking.accessEnd = new Date(endTime.getTime() + afterMin * 60000);
     }
 
     await booking.save();

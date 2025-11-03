@@ -109,6 +109,39 @@ const EmptyState = () => (
 const BookingCard = ({ booking, onClick, statusStyles, statusIcon, formatDate, formatTime, navigate }) => {
   const { hostId, start, end, status, meetingRoom } = booking;
   const hostName = hostId?.fullName || "Unknown Host";
+  const [joinAllowed, setJoinAllowed] = useState(false);
+  const [access, setAccess] = useState(null);
+  const [checking, setChecking] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const check = async () => {
+      if (!meetingRoom) return;
+      setChecking(true);
+      try {
+        const res = await axiosInstance.get(`/meetings/${meetingRoom}`);
+        if (!mounted) return;
+        setJoinAllowed(!!res.data?.valid);
+        setAccess({
+          accessStart: res.data?.bookingInfo?.accessStart,
+          accessEnd: res.data?.bookingInfo?.accessEnd,
+        });
+      } catch {}
+      finally {
+        mounted && setChecking(false);
+      }
+    };
+    check();
+    const id = setInterval(check, 60 * 1000); // refresh every minute
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [meetingRoom]);
+
+  const opensAt = access?.accessStart
+    ? new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(new Date(access.accessStart))
+    : null;
 
   return (
     <div
@@ -139,12 +172,15 @@ const BookingCard = ({ booking, onClick, statusStyles, statusIcon, formatDate, f
           <button
             onClick={(e) => {
               e.stopPropagation();
+              if (!joinAllowed) return;
               navigate(`/meeting/${booking.meetingRoom}`);
             }}
-            className="inline-flex items-center gap-2 text-blue-200 hover:text-white underline"
+            disabled={!joinAllowed}
+            className={`inline-flex items-center gap-2 underline ${joinAllowed ? "text-blue-200 hover:text-white" : "text-white/40 cursor-not-allowed"}`}
+            title={!joinAllowed && opensAt ? `Opens at ${opensAt}` : undefined}
           >
             <VideoCameraIcon className="w-4 h-4" />
-            Join
+            {checking ? "Checking…" : "Join"}
           </button>
 
         ) : (

@@ -10,7 +10,9 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationCircleIcon,
+  VideoCameraIcon,
 } from "@heroicons/react/24/outline";
+import { useNavigate } from "react-router-dom";
 
 const socket = io(getSocketUrl(), {
   secure: window.location.protocol === 'https:',
@@ -19,6 +21,7 @@ const socket = io(getSocketUrl(), {
 
 const HostDashboard = () => {
   const [data, setData] = useState(null);
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const pageSize = 4;
 
@@ -92,7 +95,7 @@ const HostDashboard = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Bookings</h2>
             <div className="bg-white rounded-2xl shadow border border-gray-100 divide-y divide-gray-100">
               {paginated.map((b) => (
-                <BookingRow key={b._id} booking={b} statusStyles={statusStyles} />
+                <BookingRow key={b._id} booking={b} statusStyles={statusStyles} navigate={navigate} />
               ))}
             </div>
 
@@ -138,8 +141,42 @@ const StatCard = ({ label, value, icon }) => (
   </div>
 );
 
-const BookingRow = ({ booking, statusStyles }) => {
-  const { guest, start, end, status } = booking;
+const BookingRow = ({ booking, statusStyles, navigate }) => {
+  const { guest, start, end, status, meetingRoom } = booking;
+  const [joinAllowed, setJoinAllowed] = useState(false);
+  const [access, setAccess] = useState(null);
+  const [checking, setChecking] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const check = async () => {
+      if (!meetingRoom) return;
+      setChecking(true);
+      try {
+        const res = await axiosInstance.get(`/meetings/${meetingRoom}`);
+        if (!mounted) return;
+        setJoinAllowed(!!res.data?.valid);
+        setAccess({
+          accessStart: res.data?.bookingInfo?.accessStart,
+          accessEnd: res.data?.bookingInfo?.accessEnd,
+        });
+      } catch {}
+      finally {
+        mounted && setChecking(false);
+      }
+    };
+    check();
+    const id = setInterval(check, 60 * 1000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [meetingRoom]);
+
+  const opensAt = access?.accessStart
+    ? new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(new Date(access.accessStart))
+    : null;
+
   return (
     <div className="p-4 hover:bg-gray-50 transition">
       <div className="flex items-center justify-between">
@@ -157,10 +194,23 @@ const BookingRow = ({ booking, statusStyles }) => {
           <p className="text-xs text-gray-500">{new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(new Date(start))} – {new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(new Date(end))}</p>
         </div>
       </div>
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex items-center justify-between">
         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${statusStyles(status)}`}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </span>
+        {meetingRoom ? (
+          <button
+            onClick={() => joinAllowed && navigate(`/meeting/${meetingRoom}`)}
+            disabled={!joinAllowed}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold shadow transition ${joinAllowed ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-md" : "bg-gray-200 text-gray-500 cursor-not-allowed"}`}
+            title={!joinAllowed && opensAt ? `Opens at ${opensAt}` : undefined}
+          >
+            <VideoCameraIcon className="w-4 h-4" />
+            {checking ? "Checking…" : "Join"}
+          </button>
+        ) : (
+          <span className="text-xs text-gray-400">No link yet</span>
+        )}
       </div>
     </div>
   );

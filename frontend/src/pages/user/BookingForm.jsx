@@ -29,7 +29,7 @@ const BookingForm = () => {
     phone: "",
     start: "",
     end: "",
-    duration: 30,
+    duration: null,
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,9 +53,9 @@ const BookingForm = () => {
   }, [hostId]);
 
 useEffect(() => {
-  if (form.start && form.duration) {
+  if (form.start && Number(form.duration) > 0) {
     const start = new Date(form.start);
-    const end = new Date(start.getTime() + form.duration * 60000);
+    const end = new Date(start.getTime() + Number(form.duration) * 60000);
     const offset = end.getTimezoneOffset();
     setForm((p) => ({
       ...p,
@@ -65,6 +65,17 @@ useEffect(() => {
     }));
   }
 }, [form.start, form.duration]);
+
+  // When host is loaded, set default duration from host availability (or from navigation state)
+  useEffect(() => {
+    const preferred = location.state?.duration;
+    if (host && (preferred || (host.durations && host.durations.length))) {
+      setForm((p) => ({
+        ...p,
+        duration: preferred ?? host.durations[0],
+      }));
+    }
+  }, [host]);
 
   /* ---------- helpers ---------- */
   const formatTime = (t) => {
@@ -232,10 +243,11 @@ useEffect(() => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Duration</label>
               <select
-                value={form.duration}
+                value={form.duration ?? ""}
                 onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
+                <option value="" disabled>Select duration</option>
                 {host.durations.map((d) => (
                   <option key={d} value={d}>
                     {d} mins

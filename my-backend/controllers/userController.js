@@ -85,17 +85,27 @@ export const createBooking = async (req, res) => {
         .json({ message: "Selected slot is not available" });
     }
 
-    // ✅ Create booking with availabilityId
+    // ✅ Pull availability snapshot for buffers and validate
+    const availability = await Availability.findById(availabilityId);
+    if (!availability) {
+      return res.status(400).json({ message: "Invalid availabilityId" });
+    }
+    if (availability.durations?.length && !availability.durations.includes(Number(duration))) {
+      return res.status(400).json({ message: "Duration not allowed for this availability" });
+    }
+
+    // ✅ Create booking with availabilityId + buffer snapshot
     const booking = await Booking.create({
       hostId,
-      availabilityId, // ✅ save availability reference
+      availabilityId, // save availability reference
       guest,
       start,
       end,
-      duration,
+      duration: Number(duration),
+      bufferBefore: availability.bufferBefore || 0,
+      bufferAfter: availability.bufferAfter || 0,
       status: "pending",
       createdByUserId: req.user._id,
-      meetingLink: "",
     });
 
     console.log("✅ Booking created successfully:", booking);
