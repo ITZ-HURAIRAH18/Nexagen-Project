@@ -132,7 +132,7 @@ const BookingCard = ({ booking, onClick, statusStyles, statusIcon, formatDate, f
       }
     };
     check();
-    const id = setInterval(check, 60 * 1000); // refresh every minute
+    const id = setInterval(check, 10 * 1000); // Check every 10 seconds
     return () => {
       mounted = false;
       clearInterval(id);

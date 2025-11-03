@@ -71,7 +71,23 @@ export const getMeetingByRoomId = async (req, res) => {
     const now = new Date();
     const accessStart = booking.accessStart || booking.start;
     const accessEnd = booking.accessEnd || booking.end;
-    const valid = now >= accessStart && now <= accessEnd;
+    
+    // Allow joining 5 seconds early to handle clock sync issues
+    const gracePeriod = 5000; // 5 seconds in milliseconds
+    const valid = now >= new Date(accessStart.getTime() - gracePeriod) && now <= accessEnd;
+
+    // Debug logging
+    console.log('Meeting Validation:', {
+      roomId,
+      now: now.toISOString(),
+      accessStart: accessStart.toISOString(),
+      accessEnd: accessEnd.toISOString(),
+      accessStartWithGrace: new Date(accessStart.getTime() - gracePeriod).toISOString(),
+      valid,
+      nowTime: now.getTime(),
+      accessStartTime: accessStart.getTime(),
+      accessEndTime: accessEnd.getTime(),
+    });
 
     return res.json({
       valid,

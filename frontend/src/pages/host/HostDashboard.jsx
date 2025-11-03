@@ -1,7 +1,7 @@
 // src/pages/host/HostDashboard.jsx  (pagination only)
 import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axiosInstance";
-import HostHeader from "../../components/HostHeader";
+import HostHeader from "../../components/hostHeader";
 import { io } from "socket.io-client";
 import { getSocketUrl } from "../../utils/apiConfig";
 import {
@@ -155,18 +155,30 @@ const BookingRow = ({ booking, statusStyles, navigate }) => {
       try {
         const res = await axiosInstance.get(`/meetings/${meetingRoom}`);
         if (!mounted) return;
+        
+        // Debug logging
+        console.log('Host Dashboard - Meeting Check:', {
+          meetingRoom,
+          valid: res.data?.valid,
+          accessStart: res.data?.bookingInfo?.accessStart,
+          accessEnd: res.data?.bookingInfo?.accessEnd,
+          now: new Date().toISOString(),
+        });
+        
         setJoinAllowed(!!res.data?.valid);
         setAccess({
           accessStart: res.data?.bookingInfo?.accessStart,
           accessEnd: res.data?.bookingInfo?.accessEnd,
         });
-      } catch {}
+      } catch (err) {
+        console.error('Host Dashboard - Meeting check error:', err);
+      }
       finally {
         mounted && setChecking(false);
       }
     };
     check();
-    const id = setInterval(check, 60 * 1000);
+    const id = setInterval(check, 10 * 1000); // Check every 10 seconds
     return () => {
       mounted = false;
       clearInterval(id);
@@ -176,6 +188,8 @@ const BookingRow = ({ booking, statusStyles, navigate }) => {
   const opensAt = access?.accessStart
     ? new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(new Date(access.accessStart))
     : null;
+
+  const safeStatus = typeof status === "string" && status.length ? status : "pending";
 
   return (
     <div className="p-4 hover:bg-gray-50 transition">
@@ -195,8 +209,8 @@ const BookingRow = ({ booking, statusStyles, navigate }) => {
         </div>
       </div>
       <div className="mt-3 flex items-center justify-between">
-        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${statusStyles(status)}`}>
-          {status.charAt(0).toUpperCase() + status.slice(1)}
+        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${statusStyles(safeStatus)}`}>
+          {safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
         </span>
         {meetingRoom ? (
           <button

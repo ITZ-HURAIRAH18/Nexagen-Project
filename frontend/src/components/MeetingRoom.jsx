@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Peer from "simple-peer";
 import io from "socket.io-client";
 import axiosInstance from "../api/axiosInstance";
@@ -21,6 +21,16 @@ const MeetingRoom = () => {
   const [remoteStreams, setRemoteStreams] = useState([]);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [isMicOn, setIsMicOn] = useState(false);
+  const [canStart, setCanStart] = useState(false);
+  const hasStartedRef = useRef(false);
+  const startTimerRef = useRef(null);
+  const endTimerRef = useRef(null);
+
+  const parseTimestamp = useCallback((value) => {
+    if (!value) return null;
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }, []);
 
   const getDisplayName = (participant, fallback) => {
     if (!participant) return fallback;
@@ -61,9 +71,11 @@ const MeetingRoom = () => {
   const statusColor =
     error || statusLower.includes("failed") || statusLower.includes("error")
       ? "bg-red-400"
-      : statusLower.includes("reconnect") || statusLower.includes("waiting")
+      : statusLower.includes("reconnect") || statusLower.includes("waiting") || statusLower.includes("not yet open")
         ? "bg-amber-400"
-        : "bg-emerald-400";
+        : statusLower.includes("ended")
+          ? "bg-slate-500"
+          : "bg-emerald-400";
   const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
   useEffect(() => {
@@ -102,7 +114,7 @@ const MeetingRoom = () => {
     });
   };
 
-  const teardownConnections = () => {
+  const teardownConnections = useCallback(() => {
     try {
       socketRef.current?.disconnect();
     } catch (disconnectError) {
@@ -120,17 +132,28 @@ const MeetingRoom = () => {
     if (userVideo.current) {
       userVideo.current.srcObject = null;
     }
-  };
+    socketRef.current = null;
+  }, []);
 
-  const handleLeaveCall = () => {
-    teardownConnections();
+  const resetMediaState = useCallback(() => {
     setRemoteStreams([]);
     setStream(null);
     streamRef.current = null;
-    setError("");
-    setStatus("Call ended");
     setIsCameraOn(false);
     setIsMicOn(false);
+  }, []);
+
+  const handleLeaveCall = () => {
+    clearTimeout(startTimerRef.current);
+    startTimerRef.current = null;
+    clearTimeout(endTimerRef.current);
+    endTimerRef.current = null;
+    teardownConnections();
+    resetMediaState();
+    hasStartedRef.current = false;
+  setCanStart(false);
+    setError("");
+    setStatus("Call ended");
     const hasHistory = typeof window !== "undefined" && window.history.length > 1;
     if (hasHistory) {
       navigate(-1);
@@ -168,9 +191,107 @@ const MeetingRoom = () => {
     };
   }, [roomId]);
 
+  useEffect(() => {
+    if (!meetingInfo) return;
+
+    const accessStartMs = parseTimestamp(meetingInfo.bookingInfo?.accessStart);
+    const accessEndMs = parseTimestamp(meetingInfo.bookingInfo?.accessEnd);
+    const now = Date.now();
+
+    let startTimeout;
+
+    const endSession = () => {
+      teardownConnections();
+      resetMediaState();
+      hasStartedRef.current = false;
+      setCanStart(false);
+      clearTimeout(endTimerRef.current);
+      endTimerRef.current = null;
+    };
+
+    if (accessEndMs && now >= accessEndMs) {
+      endSession();
+      setStatus("Meeting ended");
+      setError("This meeting has ended. Please schedule a new session.");
+      return;
+    }
+
+    if (accessStartMs && now < accessStartMs) {
+      endSession();
+      const friendlyStart = new Date(accessStartMs).toLocaleString();
+      setStatus("Meeting not yet open");
+      setError(`You can join once the meeting opens at ${friendlyStart}.`);
+      startTimeout = setTimeout(() => {
+        setError("");
+        setStatus("Initializing...");
+        setCanStart(true);
+        startTimerRef.current = null;
+      }, accessStartMs - now);
+      startTimerRef.current = startTimeout;
+    } else {
+      setError((prev) => (prev && prev.includes("meeting opens at") ? "" : prev));
+      setCanStart(true);
+    }
+
+    return () => {
+      if (startTimeout) clearTimeout(startTimeout);
+      if (startTimeout && startTimerRef.current === startTimeout) {
+        startTimerRef.current = null;
+      }
+    };
+  }, [meetingInfo, parseTimestamp, resetMediaState, teardownConnections]);
+
+  useEffect(() => {
+    if (!meetingInfo) return;
+
+    clearTimeout(endTimerRef.current);
+
+    const accessEndMs = parseTimestamp(meetingInfo.bookingInfo?.accessEnd);
+    if (!accessEndMs) return;
+
+    const now = Date.now();
+    if (now >= accessEndMs) {
+      if (hasStartedRef.current) {
+        teardownConnections();
+        resetMediaState();
+        hasStartedRef.current = false;
+      }
+      setCanStart(false);
+      setStatus("Meeting ended");
+      setError("This meeting has ended. Please schedule a new session.");
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      if (hasStartedRef.current) {
+        teardownConnections();
+        resetMediaState();
+        hasStartedRef.current = false;
+      }
+      setCanStart(false);
+      setStatus("Meeting ended");
+      setError("This meeting has ended. Please schedule a new session.");
+      endTimerRef.current = null;
+    }, accessEndMs - now);
+    endTimerRef.current = timeout;
+
+    return () => {
+      clearTimeout(timeout);
+      if (endTimerRef.current === timeout) {
+        endTimerRef.current = null;
+      }
+    };
+  }, [meetingInfo, parseTimestamp, resetMediaState, teardownConnections]);
+
   // 🔹 Initialize camera + socket + WebRTC
   useEffect(() => {
+    if (!roomId || !meetingInfo || !canStart || hasStartedRef.current) {
+      return;
+    }
+
     let mounted = true;
+    hasStartedRef.current = true;
+
     const start = async () => {
       try {
         // Check if mediaDevices is supported
@@ -396,8 +517,8 @@ const MeetingRoom = () => {
 
         setError(errorMessage);
         setStatus("Error");
-        setStream(null);
-        streamRef.current = null;
+        resetMediaState();
+        hasStartedRef.current = false;
       }
     };
     start();
@@ -405,9 +526,11 @@ const MeetingRoom = () => {
     // 🔹 Cleanup when leaving page
     return () => {
       mounted = false;
+      hasStartedRef.current = false;
       teardownConnections();
+      resetMediaState();
     };
-  }, [roomId]);
+  }, [roomId, meetingInfo, canStart, resetMediaState, teardownConnections]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -492,9 +615,7 @@ const MeetingRoom = () => {
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-5 pb-5 pt-14">
                       <p className="text-sm font-semibold text-white">
                         {remoteStreams.length === 1
-                          ? isCurrentUserHost
-                            ? guestDisplayName
-                            : hostDisplayName
+                          ? (isCurrentUserHost ? guestDisplayName : hostDisplayName)
                           : `Participant ${i + 1}`}
                       </p>
                       <p className="text-xs text-slate-300">Connected</p>
