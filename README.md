@@ -771,7 +771,7 @@ This project is licensed under the **ISC License**.
 
 **Muhammad Abuhurairah**
 - GitHub: [@ITZ-HURAIRAH18](https://github.com/ITZ-HURAIRAH18)
-- Email: muhammadabuhurairah88@gmail.com
+- Email: muhammadabuhurairah22@gmail.com
 
 ---
 
