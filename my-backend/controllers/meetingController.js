@@ -92,8 +92,8 @@ export const getMeetingByRoomId = async (req, res) => {
     return res.json({
       valid,
       roomId: booking.meetingRoom,
-      bookingInfo: {
-        guest: guestInfo,
+      bookingInfo: { 
+        guest: guestInfo, 
         host: hostInfo,
         hostId,
         start: booking.start,
