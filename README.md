@@ -1,4 +1,4 @@
-"# Nexagen - Meeting Scheduling & Video Conferencing Platform
+ Meeting Scheduling & Video Conferencing Platform
 
 <div align="center">
 
