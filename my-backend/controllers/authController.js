@@ -10,6 +10,8 @@ import {
 } from "../emails/templates.js";
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 import { io } from "../server.js";
+
+
 const generateToken = (user) =>
   jwt.sign(
     {
